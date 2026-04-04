@@ -1,0 +1,15 @@
+.anchor
+.DS_Store
+target
+node_modules
+dist
+build
+test-ledger
+.yarn
+.keypair.json
+.env
+.env.local
+.env.*
+!.env.example
+*.secret.*
+.server-key.json
