@@ -426,4 +426,64 @@ describe("USDC escrow V2 deposit rail", () => {
     expect(aggregate.totalDeposited.toNumber()).to.equal(2_695_000);
     expect(aggregate.totalSettled.toNumber()).to.equal(2_695_000);
   });
+
+  it("allows only the configured authority to withdraw collected USDC fees", async () => {
+    const outsider = Keypair.generate();
+    await provider.sendAndConfirm(
+      new anchor.web3.Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: guardian,
+          toPubkey: outsider.publicKey,
+          lamports: 10_000_000,
+        }),
+      ),
+    );
+    const outsiderUsdc = (
+      await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        payer,
+        usdcMint,
+        outsider.publicKey,
+      )
+    ).address;
+
+    try {
+      await program.methods
+        .withdrawTokenTreasury(new anchor.BN(1))
+        .accounts({
+          authority: outsider.publicKey,
+          config: configPda,
+          tokenConfig: tokenConfigPda,
+          tokenMint: usdcMint,
+          tokenTreasuryVault,
+          authorityTokenAccount: outsiderUsdc,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([outsider])
+        .rpc();
+      expect.fail("Expected NotConfigAuthority");
+    } catch (error) {
+      expect(String(error)).to.include("NotConfigAuthority");
+    }
+
+    const authorityBefore = await getAccount(provider.connection, depositorUsdc);
+    const treasuryBefore = await getAccount(provider.connection, tokenTreasuryVault);
+    await program.methods
+      .withdrawTokenTreasury(new anchor.BN(100_000))
+      .accounts({
+        authority: guardian,
+        config: configPda,
+        tokenConfig: tokenConfigPda,
+        tokenMint: usdcMint,
+        tokenTreasuryVault,
+        authorityTokenAccount: depositorUsdc,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    const authorityAfter = await getAccount(provider.connection, depositorUsdc);
+    const treasuryAfter = await getAccount(provider.connection, tokenTreasuryVault);
+    expect(Number(authorityAfter.amount - authorityBefore.amount)).to.equal(100_000);
+    expect(Number(treasuryBefore.amount - treasuryAfter.amount)).to.equal(100_000);
+  });
 });

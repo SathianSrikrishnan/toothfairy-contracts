@@ -139,6 +139,25 @@ fn prepare_token_early_withdraw(
     split_token_amount(amount_units, EARLY_WITHDRAW_PENALTY_BPS)
 }
 
+fn validate_token_treasury_withdraw(
+    authority: Pubkey,
+    configured_authority: Pubkey,
+    amount_units: u64,
+    available_units: u64,
+) -> Result<()> {
+    require_keys_eq!(
+        authority,
+        configured_authority,
+        TfnError::NotConfigAuthority
+    );
+    require!(amount_units > 0, TfnError::NothingToWithdraw);
+    require!(
+        amount_units <= available_units,
+        TfnError::InsufficientTokenTreasuryBalance
+    );
+    Ok(())
+}
+
 #[program]
 pub mod toothfairy_escrow {
     use super::*;
@@ -386,6 +405,50 @@ pub mod toothfairy_escrow {
             lock_until
         );
 
+        Ok(())
+    }
+
+    /// Withdraw collected USDC fees to the configured authority's token account.
+    pub fn withdraw_token_treasury(
+        ctx: Context<WithdrawTokenTreasury>,
+        amount_units: u64,
+    ) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+        validate_token_treasury_withdraw(
+            ctx.accounts.authority.key(),
+            ctx.accounts.token_config.authority,
+            amount_units,
+            ctx.accounts.token_treasury_vault.amount,
+        )?;
+
+        let expected_treasury_vault = get_associated_token_address(
+            &ctx.accounts.token_config.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        require_keys_eq!(
+            ctx.accounts.token_treasury_vault.key(),
+            expected_treasury_vault,
+            TfnError::WrongTokenVault
+        );
+
+        let token_config_bump = [ctx.accounts.token_config.bump];
+        let signer_seeds: &[&[u8]] = &[b"token_config", &token_config_bump];
+        token::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.token_treasury_vault.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.authority_token_account.to_account_info(),
+                    authority: ctx.accounts.token_config.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_units,
+            ctx.accounts.token_config.decimals,
+        )?;
+
+        msg!("Withdrew {} USDC base units from treasury", amount_units);
         Ok(())
     }
 
@@ -1149,6 +1212,45 @@ pub struct InitializeTokenConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Token-config authority withdraws accumulated allowlisted-token fees.
+#[derive(Accounts)]
+pub struct WithdrawTokenTreasury<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = config.authority == authority.key() @ TfnError::NotConfigAuthority,
+    )]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"token_config"],
+        bump = token_config.bump,
+        constraint = token_config.authority == authority.key() @ TfnError::NotConfigAuthority,
+        constraint = token_config.allowed_mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_config: Box<Account<'info, TokenConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        constraint = token_treasury_vault.owner == token_config.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = token_treasury_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_treasury_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = authority_token_account.owner == authority.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = authority_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub authority_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
 /// Admin action (pause/unpause). Config authority must sign.
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
@@ -1843,6 +1945,10 @@ pub enum TfnError {
     TokenMilestoneMismatch,
     #[msg("Token vault is not the canonical associated account for this deposit")]
     WrongTokenVault,
+    #[msg("Withdrawal amount must be greater than zero")]
+    NothingToWithdraw,
+    #[msg("Token treasury does not have enough available units")]
+    InsufficientTokenTreasuryBalance,
 }
 
 #[cfg(test)]
@@ -1994,5 +2100,32 @@ mod token_v2_tests {
         assert!(prepare_token_early_withdraw(200, 0, 1_225_000, 200).is_err());
         assert!(prepare_token_early_withdraw(100, 1, 1_225_000, 200).is_err());
         assert!(prepare_token_early_withdraw(100, 0, 1_225_000, 0).is_err());
+    }
+
+    #[test]
+    fn permits_only_authorized_funded_token_treasury_withdrawals() {
+        let authority = Pubkey::new_unique();
+        assert!(validate_token_treasury_withdraw(
+            authority,
+            authority,
+            100_000,
+            100_000,
+        )
+        .is_ok());
+        assert!(validate_token_treasury_withdraw(
+            Pubkey::new_unique(),
+            authority,
+            100_000,
+            100_000,
+        )
+        .is_err());
+        assert!(validate_token_treasury_withdraw(authority, authority, 0, 100_000).is_err());
+        assert!(validate_token_treasury_withdraw(
+            authority,
+            authority,
+            100_001,
+            100_000,
+        )
+        .is_err());
     }
 }
