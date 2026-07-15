@@ -11,6 +11,9 @@ const SECONDS_PER_YEAR: i64 = 31_557_600;
 /// Minimum deposit amount (10,000 lamports = 0.00001 SOL) — anti-spam
 const MIN_DEPOSIT_LAMPORTS: u64 = 10_000;
 
+/// Minimum canonical USDC deposit (10,000 base units = 0.01 USDC).
+const MIN_TOKEN_DEPOSIT_UNITS: u64 = 10_000;
+
 /// Refund grace period (7 days in seconds) — depositors can reclaim within this window
 const REFUND_GRACE_PERIOD: i64 = 7 * 24 * 60 * 60;
 
@@ -22,6 +25,43 @@ const EARLY_WITHDRAW_PENALTY_BPS: u64 = 1000;
 
 /// Basis points denominator
 const FEE_DENOMINATOR: u64 = 10_000;
+
+fn split_token_amount(amount: u64, fee_bps: u64) -> Result<(u64, u64)> {
+    let fee = amount
+        .checked_mul(fee_bps)
+        .ok_or(TfnError::ArithmeticOverflow)?
+        .checked_div(FEE_DENOMINATOR)
+        .ok_or(TfnError::ArithmeticOverflow)?;
+    let net = amount
+        .checked_sub(fee)
+        .ok_or(TfnError::ArithmeticOverflow)?;
+    Ok((fee, net))
+}
+
+fn token_lock_until(now: i64, lock_period: &LockPeriod) -> Result<i64> {
+    match lock_period {
+        LockPeriod::Immediate => Ok(0),
+        LockPeriod::ThreeYears => now
+            .checked_add(3 * SECONDS_PER_YEAR)
+            .ok_or(TfnError::ArithmeticOverflow.into()),
+        LockPeriod::FiveYears => now
+            .checked_add(5 * SECONDS_PER_YEAR)
+            .ok_or(TfnError::ArithmeticOverflow.into()),
+        LockPeriod::SevenYears => now
+            .checked_add(7 * SECONDS_PER_YEAR)
+            .ok_or(TfnError::ArithmeticOverflow.into()),
+        LockPeriod::TenYears => now
+            .checked_add(10 * SECONDS_PER_YEAR)
+            .ok_or(TfnError::ArithmeticOverflow.into()),
+        LockPeriod::FifteenYears => now
+            .checked_add(15 * SECONDS_PER_YEAR)
+            .ok_or(TfnError::ArithmeticOverflow.into()),
+        LockPeriod::UntilTimestamp { lock_until } => {
+            require!(*lock_until > now, TfnError::InvalidLockTimestamp);
+            Ok(*lock_until)
+        }
+    }
+}
 
 #[program]
 pub mod toothfairy_escrow {
@@ -565,6 +605,47 @@ pub struct Treasury {
     pub bump: u8,               // PDA bump seed
 }
 
+/// Cluster-specific allowlist for the one accepted stablecoin mint.
+/// PDA: ["token_config"]
+#[account]
+#[derive(InitSpace)]
+pub struct TokenConfig {
+    pub authority: Pubkey,
+    pub allowed_mint: Pubkey,
+    pub decimals: u8,
+    pub initialized_at: i64,
+    pub bump: u8,
+}
+
+/// Token aggregates kept separate from the deployed Milestone layout.
+/// PDA: ["token_milestone", milestone]
+#[account]
+#[derive(InitSpace)]
+pub struct TokenMilestone {
+    pub milestone: Pubkey,
+    pub deposit_count: u32,
+    pub total_deposited: u64,
+    pub total_settled: u64,
+    pub bump: u8,
+}
+
+/// One allowlisted-token deposit. Its ATA is the token vault.
+/// PDA: ["token_deposit", milestone, deposit_index]
+#[account]
+#[derive(InitSpace)]
+pub struct TokenDeposit {
+    pub milestone: Pubkey,
+    pub mint: Pubkey,
+    pub depositor: Pubkey,
+    pub amount_units: u64,
+    pub lock_until: i64,
+    pub state: u8,
+    pub created_at: i64,
+    pub settled_at: Option<i64>,
+    pub deposit_index: u32,
+    pub bump: u8,
+}
+
 // ============================================================================
 // TOOTH TYPES (20 baby teeth)
 // ============================================================================
@@ -1045,4 +1126,58 @@ pub enum TfnError {
     ContractPaused,
     #[msg("Only the config authority can perform this action")]
     NotConfigAuthority,
+    #[msg("Token deposit must be at least 0.01 USDC")]
+    TokenDepositTooSmall,
+    #[msg("Token amount arithmetic overflowed")]
+    ArithmeticOverflow,
+}
+
+#[cfg(test)]
+mod token_v2_tests {
+    use super::*;
+
+    #[test]
+    fn splits_usdc_deposit_fee_in_base_units() {
+        assert_eq!(split_token_amount(1_250_000, PLATFORM_FEE_BPS).unwrap(), (25_000, 1_225_000));
+    }
+
+    #[test]
+    fn splits_early_withdraw_penalty_in_base_units() {
+        assert_eq!(
+            split_token_amount(1_225_000, EARLY_WITHDRAW_PENALTY_BPS).unwrap(),
+            (122_500, 1_102_500),
+        );
+    }
+
+    #[test]
+    fn rejects_token_fee_math_overflow() {
+        assert!(split_token_amount(u64::MAX, FEE_DENOMINATOR).is_err());
+    }
+
+    #[test]
+    fn sets_three_year_and_custom_token_locks() {
+        let now = 1_800_000_000;
+        assert_eq!(
+            token_lock_until(now, &LockPeriod::ThreeYears).unwrap(),
+            now + 3 * SECONDS_PER_YEAR,
+        );
+        assert_eq!(
+            token_lock_until(now, &LockPeriod::UntilTimestamp { lock_until: now + 42 }).unwrap(),
+            now + 42,
+        );
+    }
+
+    #[test]
+    fn rejects_past_custom_token_locks() {
+        assert!(token_lock_until(
+            1_800_000_000,
+            &LockPeriod::UntilTimestamp { lock_until: 1_799_999_999 },
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn defines_one_cent_as_the_minimum_usdc_deposit() {
+        assert_eq!(MIN_TOKEN_DEPOSIT_UNITS, 10_000);
+    }
 }
