@@ -65,6 +65,8 @@ PDA: `["token_deposit", milestone, deposit_index]`
 - milestone
 - mint
 - depositor
+- depositor display name
+- canonical deposit-vault address
 - net token amount in base units
 - lock timestamp
 - state
@@ -73,6 +75,8 @@ PDA: `["token_deposit", milestone, deposit_index]`
 - bump
 
 Its associated token account is the vault. The TokenDeposit PDA controls that vault and signs claim, refund, and early-withdraw token transfers.
+
+The client creates the deposit and treasury associated token accounts immediately before the deposit instruction, ideally in the same transaction. The program independently derives and verifies both canonical addresses, owners, and mints before moving funds. Keeping token-account creation outside the custody instruction avoids Solana's small execution-stack limit without weakening vault validation.
 
 ## Instructions
 
@@ -118,4 +122,3 @@ Each row links to its own verifiable deposit or vault account. The cNFT asset re
 - Anchor SPL Token integration: https://www.anchor-lang.com/docs/tokens
 - Anchor token accounts and PDA vaults: https://www.anchor-lang.com/docs/tokens/basics/create-token-account
 - Circle USDC addresses: https://developers.circle.com/stablecoins/usdc-contract-addresses
-

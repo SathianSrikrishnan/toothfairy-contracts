@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::Mint as TokenMint;
+use anchor_spl::{
+    associated_token::get_associated_token_address,
+    token::{self, Mint as TokenMint, Token, TokenAccount, TransferChecked},
+};
 
 declare_id!("FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC");
 
@@ -72,6 +75,23 @@ fn validate_token_config_input(
     require_keys_eq!(authority, config_authority, TfnError::NotConfigAuthority);
     require!(mint_decimals == 6, TfnError::InvalidTokenDecimals);
     Ok(())
+}
+
+fn prepare_token_deposit(
+    amount_units: u64,
+    lock_period: &LockPeriod,
+    depositor_name: &str,
+    token_mint: Pubkey,
+    allowed_mint: Pubkey,
+    now: i64,
+) -> Result<(u64, u64, i64)> {
+    require!(amount_units >= MIN_TOKEN_DEPOSIT_UNITS, TfnError::TokenDepositTooSmall);
+    require!(depositor_name.len() <= 32, TfnError::NameTooLong);
+    require_keys_eq!(token_mint, allowed_mint, TfnError::WrongTokenMint);
+
+    let (fee_units, net_units) = split_token_amount(amount_units, PLATFORM_FEE_BPS)?;
+    let lock_until = token_lock_until(now, lock_period)?;
+    Ok((fee_units, net_units, lock_until))
 }
 
 #[program]
@@ -321,6 +341,144 @@ pub mod toothfairy_escrow {
             lock_until
         );
 
+        Ok(())
+    }
+
+    /// Deposit canonical USDC into a deposit-specific token vault.
+    /// The fee and net amount remain independently verifiable token balances.
+    pub fn deposit_token(
+        ctx: Context<MakeTokenDeposit>,
+        amount_units: u64,
+        lock_period: LockPeriod,
+        depositor_name: String,
+    ) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let (fee_units, net_units, lock_until) = prepare_token_deposit(
+            amount_units,
+            &lock_period,
+            &depositor_name,
+            ctx.accounts.token_mint.key(),
+            ctx.accounts.token_config.allowed_mint,
+            now,
+        )?;
+
+        let token_milestone = &mut ctx.accounts.token_milestone;
+        if token_milestone.milestone == Pubkey::default() {
+            token_milestone.milestone = ctx.accounts.milestone.key();
+            token_milestone.deposit_count = 0;
+            token_milestone.total_deposited = 0;
+            token_milestone.total_settled = 0;
+            token_milestone.bump = ctx.bumps.token_milestone;
+        } else {
+            require_keys_eq!(
+                token_milestone.milestone,
+                ctx.accounts.milestone.key(),
+                TfnError::TokenMilestoneMismatch
+            );
+        }
+        let deposit_index = token_milestone.deposit_count;
+
+        let expected_deposit_vault = get_associated_token_address(
+            &ctx.accounts.token_deposit.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        let expected_treasury_vault = get_associated_token_address(
+            &ctx.accounts.token_config.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.key(),
+            expected_deposit_vault,
+            TfnError::WrongTokenVault
+        );
+        require_keys_eq!(
+            ctx.accounts.token_treasury_vault.key(),
+            expected_treasury_vault,
+            TfnError::WrongTokenVault
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.owner,
+            ctx.accounts.token_deposit.key(),
+            TfnError::WrongTokenAccountOwner
+        );
+        require_keys_eq!(
+            ctx.accounts.token_treasury_vault.owner,
+            ctx.accounts.token_config.key(),
+            TfnError::WrongTokenAccountOwner
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.mint,
+            ctx.accounts.token_mint.key(),
+            TfnError::WrongTokenMint
+        );
+        require_keys_eq!(
+            ctx.accounts.token_treasury_vault.mint,
+            ctx.accounts.token_mint.key(),
+            TfnError::WrongTokenMint
+        );
+
+        if fee_units > 0 {
+            token::transfer_checked(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    TransferChecked {
+                        from: ctx.accounts.depositor_token_account.to_account_info(),
+                        mint: ctx.accounts.token_mint.to_account_info(),
+                        to: ctx.accounts.token_treasury_vault.to_account_info(),
+                        authority: ctx.accounts.depositor.to_account_info(),
+                    },
+                ),
+                fee_units,
+                ctx.accounts.token_config.decimals,
+            )?;
+        }
+
+        token::transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.depositor_token_account.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.deposit_vault.to_account_info(),
+                    authority: ctx.accounts.depositor.to_account_info(),
+                },
+            ),
+            net_units,
+            ctx.accounts.token_config.decimals,
+        )?;
+
+        let deposit = &mut ctx.accounts.token_deposit;
+        deposit.milestone = ctx.accounts.milestone.key();
+        deposit.mint = ctx.accounts.token_mint.key();
+        deposit.depositor = ctx.accounts.depositor.key();
+        deposit.depositor_name = depositor_name;
+        deposit.vault = ctx.accounts.deposit_vault.key();
+        deposit.amount_units = net_units;
+        deposit.lock_until = lock_until;
+        deposit.state = 0;
+        deposit.created_at = now;
+        deposit.settled_at = None;
+        deposit.deposit_index = deposit_index;
+        deposit.bump = ctx.bumps.token_deposit;
+
+        token_milestone.total_deposited = token_milestone
+            .total_deposited
+            .checked_add(net_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+        token_milestone.deposit_count = token_milestone
+            .deposit_count
+            .checked_add(1)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!(
+            "USDC deposit #{}: {} base units net (fee: {}) locked until {}",
+            deposit_index,
+            net_units,
+            fee_units,
+            lock_until
+        );
         Ok(())
     }
 
@@ -668,6 +826,9 @@ pub struct TokenDeposit {
     pub milestone: Pubkey,
     pub mint: Pubkey,
     pub depositor: Pubkey,
+    #[max_len(32)]
+    pub depositor_name: String,
+    pub vault: Pubkey,
     pub amount_units: u64,
     pub lock_until: i64,
     pub state: u8,
@@ -872,6 +1033,69 @@ pub struct MakeDeposit<'info> {
     )]
     pub config: Account<'info, Config>,
 
+    pub system_program: Program<'info, System>,
+}
+
+/// Anyone can deposit the allowlisted USDC mint into an existing milestone.
+#[derive(Accounts)]
+pub struct MakeTokenDeposit<'info> {
+    #[account(mut)]
+    pub depositor: Signer<'info>,
+
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+    )]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"token_config"],
+        bump = token_config.bump,
+        constraint = token_config.allowed_mint == token_mint.key() @ TfnError::WrongTokenMint,
+        constraint = token_config.decimals == token_mint.decimals @ TfnError::InvalidTokenDecimals,
+    )]
+    pub token_config: Box<Account<'info, TokenConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        constraint = depositor_token_account.owner == depositor.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = depositor_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub depositor_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = depositor,
+        space = 8 + TokenMilestone::INIT_SPACE,
+        seeds = [b"token_milestone", milestone.key().as_ref()],
+        bump,
+    )]
+    pub token_milestone: Box<Account<'info, TokenMilestone>>,
+
+    #[account(
+        init,
+        payer = depositor,
+        space = 8 + TokenDeposit::INIT_SPACE,
+        seeds = [
+            b"token_deposit",
+            milestone.key().as_ref(),
+            &token_milestone.deposit_count.to_le_bytes(),
+        ],
+        bump,
+    )]
+    pub token_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(mut)]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub token_treasury_vault: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1190,6 +1414,14 @@ pub enum TfnError {
     ArithmeticOverflow,
     #[msg("The allowlisted stablecoin mint must use six decimals")]
     InvalidTokenDecimals,
+    #[msg("Only the allowlisted canonical USDC mint is accepted")]
+    WrongTokenMint,
+    #[msg("The source token account must belong to the depositor")]
+    WrongTokenAccountOwner,
+    #[msg("Token aggregate does not belong to this milestone")]
+    TokenMilestoneMismatch,
+    #[msg("Token vault is not the canonical associated account for this deposit")]
+    WrongTokenVault,
 }
 
 #[cfg(test)]
@@ -1247,5 +1479,51 @@ mod token_v2_tests {
         assert!(validate_token_config_input(authority, authority, 6).is_ok());
         assert!(validate_token_config_input(Pubkey::new_unique(), authority, 6).is_err());
         assert!(validate_token_config_input(authority, authority, 9).is_err());
+    }
+
+    #[test]
+    fn prepares_only_allowlisted_usdc_deposits() {
+        let mint = Pubkey::new_unique();
+        let now = 1_800_000_000;
+        assert_eq!(
+            prepare_token_deposit(
+                1_250_000,
+                &LockPeriod::ThreeYears,
+                "Dad",
+                mint,
+                mint,
+                now,
+            )
+            .unwrap(),
+            (25_000, 1_225_000, now + 3 * SECONDS_PER_YEAR),
+        );
+
+        assert!(prepare_token_deposit(
+            1_250_000,
+            &LockPeriod::ThreeYears,
+            "Dad",
+            Pubkey::new_unique(),
+            mint,
+            now,
+        )
+        .is_err());
+        assert!(prepare_token_deposit(
+            MIN_TOKEN_DEPOSIT_UNITS - 1,
+            &LockPeriod::ThreeYears,
+            "Dad",
+            mint,
+            mint,
+            now,
+        )
+        .is_err());
+        assert!(prepare_token_deposit(
+            1_250_000,
+            &LockPeriod::ThreeYears,
+            &"x".repeat(33),
+            mint,
+            mint,
+            now,
+        )
+        .is_err());
     }
 }
