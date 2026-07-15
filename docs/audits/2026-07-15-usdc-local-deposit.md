@@ -25,13 +25,14 @@ This receipt covers the additive USDC deposit path only. It did not deploy or mo
 
 ## Verification commands and results
 
-- Rust focused safety test: passed.
-- Existing SOL account-layout compatibility test: passed before this batch and remains part of the release gate.
-- Anchor program build: passed after reducing the deposit account frame below Solana's stack limit.
-- Focused local-validator suite: `9 passing`.
+- Rust safety suite: `13 passing`.
+- Existing SOL account-layout compatibility test: `1 passing`.
+- Repaired SOL local-validator regression suite: `19 passing`.
+- USDC local-validator lifecycle suite: `9 passing`.
+- Anchor program and IDL build: passed.
 
 ## Known follow-up gates
 
-- The repository's older SOL integration suite needs repair before it can be used as a full regression gate.
 - The production-dependency audit currently reports 11 findings (4 high, 7 moderate) in the legacy Anchor/Solana JavaScript toolchain. No automatic breaking downgrade was accepted; the toolchain needs an explicit upgrade or documented containment decision before a release candidate.
-- Devnet remains untouched until the complete lifecycle suite passes locally.
+- The local Anchor CLI is `0.32.1` while the program and JavaScript client remain on `0.30.1`; builds pass, but the release process should pin or align the toolchain before deployment.
+- Devnet remains untouched. The next release gate is a devnet-only upgrade, canonical devnet-USDC initialization, one deposit/release receipt, and a post-upgrade regression check before any mainnet decision.
