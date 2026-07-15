@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::Mint as TokenMint;
 
 declare_id!("FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC");
 
@@ -63,6 +64,16 @@ fn token_lock_until(now: i64, lock_period: &LockPeriod) -> Result<i64> {
     }
 }
 
+fn validate_token_config_input(
+    authority: Pubkey,
+    config_authority: Pubkey,
+    mint_decimals: u8,
+) -> Result<()> {
+    require_keys_eq!(authority, config_authority, TfnError::NotConfigAuthority);
+    require!(mint_decimals == 6, TfnError::InvalidTokenDecimals);
+    Ok(())
+}
+
 #[program]
 pub mod toothfairy_escrow {
     use super::*;
@@ -79,6 +90,26 @@ pub mod toothfairy_escrow {
         config.bump = ctx.bumps.config;
 
         msg!("Config initialized with authority: {}", config.authority);
+        Ok(())
+    }
+
+    /// Configure the one allowlisted six-decimal stablecoin mint for this cluster.
+    /// This is additive and does not alter any existing SOL account.
+    pub fn initialize_token_config(ctx: Context<InitializeTokenConfig>) -> Result<()> {
+        validate_token_config_input(
+            ctx.accounts.authority.key(),
+            ctx.accounts.config.authority,
+            ctx.accounts.token_mint.decimals,
+        )?;
+
+        let token_config = &mut ctx.accounts.token_config;
+        token_config.authority = ctx.accounts.authority.key();
+        token_config.allowed_mint = ctx.accounts.token_mint.key();
+        token_config.decimals = ctx.accounts.token_mint.decimals;
+        token_config.initialized_at = Clock::get()?.unix_timestamp;
+        token_config.bump = ctx.bumps.token_config;
+
+        msg!("Token rail configured for mint {}", token_config.allowed_mint);
         Ok(())
     }
 
@@ -700,6 +731,33 @@ pub struct InitializeConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Initialize the cluster-specific canonical stablecoin allowlist.
+#[derive(Accounts)]
+pub struct InitializeTokenConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = authority.key() == config.authority @ TfnError::NotConfigAuthority,
+    )]
+    pub config: Account<'info, Config>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + TokenConfig::INIT_SPACE,
+        seeds = [b"token_config"],
+        bump,
+    )]
+    pub token_config: Account<'info, TokenConfig>,
+
+    pub token_mint: Account<'info, TokenMint>,
+
+    pub system_program: Program<'info, System>,
+}
+
 /// Admin action (pause/unpause). Config authority must sign.
 #[derive(Accounts)]
 pub struct AdminAction<'info> {
@@ -1130,6 +1188,8 @@ pub enum TfnError {
     TokenDepositTooSmall,
     #[msg("Token amount arithmetic overflowed")]
     ArithmeticOverflow,
+    #[msg("The allowlisted stablecoin mint must use six decimals")]
+    InvalidTokenDecimals,
 }
 
 #[cfg(test)]
@@ -1179,5 +1239,13 @@ mod token_v2_tests {
     #[test]
     fn defines_one_cent_as_the_minimum_usdc_deposit() {
         assert_eq!(MIN_TOKEN_DEPOSIT_UNITS, 10_000);
+    }
+
+    #[test]
+    fn accepts_only_the_config_authority_and_six_decimal_mint() {
+        let authority = Pubkey::new_unique();
+        assert!(validate_token_config_input(authority, authority, 6).is_ok());
+        assert!(validate_token_config_input(Pubkey::new_unique(), authority, 6).is_err());
+        assert!(validate_token_config_input(authority, authority, 9).is_err());
     }
 }
