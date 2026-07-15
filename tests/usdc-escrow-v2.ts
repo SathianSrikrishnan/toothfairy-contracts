@@ -27,6 +27,7 @@ describe("USDC escrow V2 deposit rail", () => {
   let tokenMilestonePda: PublicKey;
   let usdcMint: PublicKey;
   let depositorUsdc: PublicKey;
+  let childUsdc: PublicKey;
   let tokenTreasuryVault: PublicKey;
 
   const tokenDepositPda = (index: number) =>
@@ -126,8 +127,17 @@ describe("USDC escrow V2 deposit rail", () => {
       usdcMint,
       depositorUsdc,
       payer,
-      2_000_000,
+      5_000_000,
     );
+
+    childUsdc = (
+      await getOrCreateAssociatedTokenAccount(
+        provider.connection,
+        payer,
+        usdcMint,
+        childWallet,
+      )
+    ).address;
 
     tokenTreasuryVault = (
       await getOrCreateAssociatedTokenAccount(
@@ -289,5 +299,131 @@ describe("USDC escrow V2 deposit rail", () => {
     } catch (error) {
       expect(String(error)).to.include("WrongTokenMint");
     }
+  });
+
+  it("rejects release before the chosen opening date", async () => {
+    const accounts = await depositAccounts(0);
+    try {
+      await program.methods
+        .claimTokenDeposit()
+        .accounts({
+          guardian,
+          childProfile: childProfilePda,
+          milestone: milestonePda,
+          config: configPda,
+          tokenConfig: tokenConfigPda,
+          tokenMint: usdcMint,
+          tokenMilestone: tokenMilestonePda,
+          tokenDeposit: accounts.tokenDeposit,
+          depositVault: accounts.depositVault,
+          childTokenAccount: childUsdc,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+      expect.fail("Expected DepositStillLocked");
+    } catch (error) {
+      expect(String(error)).to.include("DepositStillLocked");
+    }
+  });
+
+  it("releases early with a ten-percent penalty", async () => {
+    const accounts = await depositAccounts(0);
+    const childBefore = await getAccount(provider.connection, childUsdc);
+    const treasuryBefore = await getAccount(provider.connection, tokenTreasuryVault);
+
+    await program.methods
+      .earlyWithdrawTokenDeposit()
+      .accounts({
+        guardian,
+        childProfile: childProfilePda,
+        milestone: milestonePda,
+        config: configPda,
+        tokenConfig: tokenConfigPda,
+        tokenMint: usdcMint,
+        tokenMilestone: tokenMilestonePda,
+        tokenDeposit: accounts.tokenDeposit,
+        depositVault: accounts.depositVault,
+        childTokenAccount: childUsdc,
+        tokenTreasuryVault,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    const childAfter = await getAccount(provider.connection, childUsdc);
+    const treasuryAfter = await getAccount(provider.connection, tokenTreasuryVault);
+    const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
+    const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
+
+    expect(Number(childAfter.amount - childBefore.amount)).to.equal(1_102_500);
+    expect(Number(treasuryAfter.amount - treasuryBefore.amount)).to.equal(122_500);
+    expect(Number(vaultAfter.amount)).to.equal(0);
+    expect(deposit.state).to.equal(3);
+  });
+
+  it("returns the net amount to the original depositor during the grace period", async () => {
+    const accounts = await depositAccounts(1);
+    await program.methods
+      .depositToken(new anchor.BN(1_000_000), { immediate: {} }, "Grandma")
+      .accounts(accounts)
+      .rpc();
+
+    const sourceBefore = await getAccount(provider.connection, depositorUsdc);
+    await program.methods
+      .refundTokenDeposit()
+      .accounts({
+        depositor: guardian,
+        config: configPda,
+        tokenConfig: tokenConfigPda,
+        tokenMint: usdcMint,
+        tokenMilestone: tokenMilestonePda,
+        tokenDeposit: accounts.tokenDeposit,
+        depositVault: accounts.depositVault,
+        depositorTokenAccount: depositorUsdc,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    const sourceAfter = await getAccount(provider.connection, depositorUsdc);
+    const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
+    const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
+    expect(Number(sourceAfter.amount - sourceBefore.amount)).to.equal(980_000);
+    expect(Number(vaultAfter.amount)).to.equal(0);
+    expect(deposit.state).to.equal(2);
+  });
+
+  it("releases an immediately available deposit to the child", async () => {
+    const accounts = await depositAccounts(2);
+    await program.methods
+      .depositToken(new anchor.BN(500_000), { immediate: {} }, "Dad")
+      .accounts(accounts)
+      .rpc();
+
+    const childBefore = await getAccount(provider.connection, childUsdc);
+    await program.methods
+      .claimTokenDeposit()
+      .accounts({
+        guardian,
+        childProfile: childProfilePda,
+        milestone: milestonePda,
+        config: configPda,
+        tokenConfig: tokenConfigPda,
+        tokenMint: usdcMint,
+        tokenMilestone: tokenMilestonePda,
+        tokenDeposit: accounts.tokenDeposit,
+        depositVault: accounts.depositVault,
+        childTokenAccount: childUsdc,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+
+    const childAfter = await getAccount(provider.connection, childUsdc);
+    const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
+    const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
+    const aggregate = await program.account.tokenMilestone.fetch(tokenMilestonePda);
+    expect(Number(childAfter.amount - childBefore.amount)).to.equal(490_000);
+    expect(Number(vaultAfter.amount)).to.equal(0);
+    expect(deposit.state).to.equal(1);
+    expect(aggregate.totalDeposited.toNumber()).to.equal(2_695_000);
+    expect(aggregate.totalSettled.toNumber()).to.equal(2_695_000);
   });
 });

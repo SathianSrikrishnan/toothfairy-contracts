@@ -30,6 +30,11 @@ const EARLY_WITHDRAW_PENALTY_BPS: u64 = 1000;
 /// Basis points denominator
 const FEE_DENOMINATOR: u64 = 10_000;
 
+const TOKEN_DEPOSIT_ACTIVE: u8 = 0;
+const TOKEN_DEPOSIT_CLAIMED: u8 = 1;
+const TOKEN_DEPOSIT_REFUNDED: u8 = 2;
+const TOKEN_DEPOSIT_EARLY_WITHDRAWN: u8 = 3;
+
 fn split_token_amount(amount: u64, fee_bps: u64) -> Result<(u64, u64)> {
     let fee = amount
         .checked_mul(fee_bps)
@@ -92,6 +97,46 @@ fn prepare_token_deposit(
     let (fee_units, net_units) = split_token_amount(amount_units, PLATFORM_FEE_BPS)?;
     let lock_until = token_lock_until(now, lock_period)?;
     Ok((fee_units, net_units, lock_until))
+}
+
+fn validate_token_claim(now: i64, state: u8, amount_units: u64, lock_until: i64) -> Result<()> {
+    require!(state == TOKEN_DEPOSIT_ACTIVE, TfnError::AlreadyClaimed);
+    require!(amount_units > 0, TfnError::NothingToClaim);
+    if lock_until > 0 {
+        require!(now >= lock_until, TfnError::DepositStillLocked);
+    }
+    Ok(())
+}
+
+fn validate_token_refund(
+    now: i64,
+    state: u8,
+    created_at: i64,
+    depositor: Pubkey,
+    caller: Pubkey,
+) -> Result<()> {
+    require!(state == TOKEN_DEPOSIT_ACTIVE, TfnError::AlreadyClaimed);
+    require_keys_eq!(depositor, caller, TfnError::NotOriginalDepositor);
+    let deadline = created_at
+        .checked_add(REFUND_GRACE_PERIOD)
+        .ok_or(TfnError::ArithmeticOverflow)?;
+    require!(now <= deadline, TfnError::RefundPeriodExpired);
+    Ok(())
+}
+
+fn prepare_token_early_withdraw(
+    now: i64,
+    state: u8,
+    amount_units: u64,
+    lock_until: i64,
+) -> Result<(u64, u64)> {
+    require!(state == TOKEN_DEPOSIT_ACTIVE, TfnError::AlreadyClaimed);
+    require!(amount_units > 0, TfnError::NothingToClaim);
+    require!(
+        lock_until > 0 && now < lock_until,
+        TfnError::DepositNotLocked
+    );
+    split_token_amount(amount_units, EARLY_WITHDRAW_PENALTY_BPS)
 }
 
 #[program]
@@ -478,6 +523,191 @@ pub mod toothfairy_escrow {
             net_units,
             fee_units,
             lock_until
+        );
+        Ok(())
+    }
+
+    /// Release a matured USDC deposit to the child's token account.
+    pub fn claim_token_deposit(ctx: Context<ClaimTokenDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.token_deposit;
+        validate_token_claim(now, deposit.state, deposit.amount_units, deposit.lock_until)?;
+
+        let amount_units = deposit.amount_units;
+        let milestone_key = deposit.milestone;
+        let deposit_index = deposit.deposit_index.to_le_bytes();
+        let deposit_bump = [deposit.bump];
+        let signer_seeds: &[&[u8]] = &[
+            b"token_deposit",
+            milestone_key.as_ref(),
+            &deposit_index,
+            &deposit_bump,
+        ];
+
+        token::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.deposit_vault.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.child_token_account.to_account_info(),
+                    authority: ctx.accounts.token_deposit.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_units,
+            ctx.accounts.token_config.decimals,
+        )?;
+
+        ctx.accounts.token_deposit.state = TOKEN_DEPOSIT_CLAIMED;
+        ctx.accounts.token_deposit.settled_at = Some(now);
+        ctx.accounts.token_milestone.total_settled = ctx
+            .accounts
+            .token_milestone
+            .total_settled
+            .checked_add(amount_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!("USDC deposit released: {} base units", amount_units);
+        Ok(())
+    }
+
+    /// Return a USDC deposit to its original depositor during the grace period.
+    pub fn refund_token_deposit(ctx: Context<RefundTokenDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.token_deposit;
+        validate_token_refund(
+            now,
+            deposit.state,
+            deposit.created_at,
+            deposit.depositor,
+            ctx.accounts.depositor.key(),
+        )?;
+
+        let amount_units = deposit.amount_units;
+        let milestone_key = deposit.milestone;
+        let deposit_index = deposit.deposit_index.to_le_bytes();
+        let deposit_bump = [deposit.bump];
+        let signer_seeds: &[&[u8]] = &[
+            b"token_deposit",
+            milestone_key.as_ref(),
+            &deposit_index,
+            &deposit_bump,
+        ];
+
+        token::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.deposit_vault.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.depositor_token_account.to_account_info(),
+                    authority: ctx.accounts.token_deposit.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_units,
+            ctx.accounts.token_config.decimals,
+        )?;
+
+        ctx.accounts.token_deposit.state = TOKEN_DEPOSIT_REFUNDED;
+        ctx.accounts.token_deposit.settled_at = Some(now);
+        ctx.accounts.token_milestone.total_settled = ctx
+            .accounts
+            .token_milestone
+            .total_settled
+            .checked_add(amount_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!("USDC deposit refunded: {} base units", amount_units);
+        Ok(())
+    }
+
+    /// Release a still-locked USDC deposit early with the same ten-percent penalty as SOL.
+    pub fn early_withdraw_token_deposit(
+        ctx: Context<EarlyWithdrawTokenDeposit>,
+    ) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.token_deposit;
+        let (penalty_units, payout_units) = prepare_token_early_withdraw(
+            now,
+            deposit.state,
+            deposit.amount_units,
+            deposit.lock_until,
+        )?;
+
+        let expected_treasury_vault = get_associated_token_address(
+            &ctx.accounts.token_config.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        require_keys_eq!(
+            ctx.accounts.token_treasury_vault.key(),
+            expected_treasury_vault,
+            TfnError::WrongTokenVault
+        );
+
+        let amount_units = deposit.amount_units;
+        let milestone_key = deposit.milestone;
+        let deposit_index = deposit.deposit_index.to_le_bytes();
+        let deposit_bump = [deposit.bump];
+        let signer_seeds: &[&[u8]] = &[
+            b"token_deposit",
+            milestone_key.as_ref(),
+            &deposit_index,
+            &deposit_bump,
+        ];
+
+        if penalty_units > 0 {
+            token::transfer_checked(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    TransferChecked {
+                        from: ctx.accounts.deposit_vault.to_account_info(),
+                        mint: ctx.accounts.token_mint.to_account_info(),
+                        to: ctx.accounts.token_treasury_vault.to_account_info(),
+                        authority: ctx.accounts.token_deposit.to_account_info(),
+                    },
+                    &[signer_seeds],
+                ),
+                penalty_units,
+                ctx.accounts.token_config.decimals,
+            )?;
+        }
+
+        token::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.deposit_vault.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.child_token_account.to_account_info(),
+                    authority: ctx.accounts.token_deposit.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            payout_units,
+            ctx.accounts.token_config.decimals,
+        )?;
+
+        ctx.accounts.token_deposit.state = TOKEN_DEPOSIT_EARLY_WITHDRAWN;
+        ctx.accounts.token_deposit.settled_at = Some(now);
+        ctx.accounts.token_milestone.total_settled = ctx
+            .accounts
+            .token_milestone
+            .total_settled
+            .checked_add(amount_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!(
+            "USDC early release: {} to child, {} penalty",
+            payout_units,
+            penalty_units
         );
         Ok(())
     }
@@ -1099,6 +1329,197 @@ pub struct MakeTokenDeposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Guardian releases a matured token deposit to the child's token account.
+#[derive(Accounts)]
+pub struct ClaimTokenDeposit<'info> {
+    pub guardian: Signer<'info>,
+
+    #[account(has_one = guardian)]
+    pub child_profile: Box<Account<'info, ChildProfile>>,
+
+    #[account(
+        constraint = milestone.child_profile == child_profile.key() @ TfnError::MilestoneMismatch,
+    )]
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"token_config"],
+        bump = token_config.bump,
+        constraint = token_config.allowed_mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_config: Box<Account<'info, TokenConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"token_milestone", milestone.key().as_ref()],
+        bump = token_milestone.bump,
+        constraint = token_milestone.milestone == milestone.key() @ TfnError::TokenMilestoneMismatch,
+    )]
+    pub token_milestone: Box<Account<'info, TokenMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"token_deposit",
+            milestone.key().as_ref(),
+            &token_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = token_deposit.bump,
+        constraint = token_deposit.milestone == milestone.key() @ TfnError::DepositMismatch,
+        constraint = token_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == token_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == token_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = child_token_account.owner == child_profile.child_wallet @ TfnError::WrongChildWallet,
+        constraint = child_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub child_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Original depositor reclaims the net token amount during the grace period.
+#[derive(Accounts)]
+pub struct RefundTokenDeposit<'info> {
+    pub depositor: Signer<'info>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"token_config"],
+        bump = token_config.bump,
+        constraint = token_config.allowed_mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_config: Box<Account<'info, TokenConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"token_milestone", token_deposit.milestone.as_ref()],
+        bump = token_milestone.bump,
+        constraint = token_milestone.milestone == token_deposit.milestone @ TfnError::TokenMilestoneMismatch,
+    )]
+    pub token_milestone: Box<Account<'info, TokenMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"token_deposit",
+            token_deposit.milestone.as_ref(),
+            &token_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = token_deposit.bump,
+        constraint = token_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+        constraint = token_deposit.depositor == depositor.key() @ TfnError::NotOriginalDepositor,
+    )]
+    pub token_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == token_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == token_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = depositor_token_account.owner == depositor.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = depositor_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub depositor_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Guardian releases a still-locked token deposit with a ten-percent penalty.
+#[derive(Accounts)]
+pub struct EarlyWithdrawTokenDeposit<'info> {
+    pub guardian: Signer<'info>,
+
+    #[account(has_one = guardian)]
+    pub child_profile: Box<Account<'info, ChildProfile>>,
+
+    #[account(
+        constraint = milestone.child_profile == child_profile.key() @ TfnError::MilestoneMismatch,
+    )]
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"token_config"],
+        bump = token_config.bump,
+        constraint = token_config.allowed_mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_config: Box<Account<'info, TokenConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"token_milestone", milestone.key().as_ref()],
+        bump = token_milestone.bump,
+        constraint = token_milestone.milestone == milestone.key() @ TfnError::TokenMilestoneMismatch,
+    )]
+    pub token_milestone: Box<Account<'info, TokenMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"token_deposit",
+            milestone.key().as_ref(),
+            &token_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = token_deposit.bump,
+        constraint = token_deposit.milestone == milestone.key() @ TfnError::DepositMismatch,
+        constraint = token_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == token_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == token_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = child_token_account.owner == child_profile.child_wallet @ TfnError::WrongChildWallet,
+        constraint = child_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub child_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = token_treasury_vault.owner == token_config.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = token_treasury_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub token_treasury_vault: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
 /// Only the guardian can claim a deposit — sends SOL to child's wallet.
 /// Enforces time-lock: deposit.lock_until must be in the past.
 #[derive(Accounts)]
@@ -1525,5 +1946,53 @@ mod token_v2_tests {
             now,
         )
         .is_err());
+    }
+
+    #[test]
+    fn validates_mature_token_claims() {
+        assert!(validate_token_claim(200, 0, 1_000_000, 200).is_ok());
+        assert!(validate_token_claim(199, 0, 1_000_000, 200).is_err());
+        assert!(validate_token_claim(200, 1, 1_000_000, 200).is_err());
+        assert!(validate_token_claim(200, 0, 0, 200).is_err());
+    }
+
+    #[test]
+    fn validates_original_depositor_refunds_inside_grace_period() {
+        let depositor = Pubkey::new_unique();
+        assert!(validate_token_refund(
+            100 + REFUND_GRACE_PERIOD,
+            0,
+            100,
+            depositor,
+            depositor,
+        )
+        .is_ok());
+        assert!(validate_token_refund(
+            101 + REFUND_GRACE_PERIOD,
+            0,
+            100,
+            depositor,
+            depositor,
+        )
+        .is_err());
+        assert!(validate_token_refund(
+            100,
+            0,
+            100,
+            depositor,
+            Pubkey::new_unique(),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn prepares_early_token_withdrawal_only_while_locked() {
+        assert_eq!(
+            prepare_token_early_withdraw(100, 0, 1_225_000, 200).unwrap(),
+            (122_500, 1_102_500),
+        );
+        assert!(prepare_token_early_withdraw(200, 0, 1_225_000, 200).is_err());
+        assert!(prepare_token_early_withdraw(100, 1, 1_225_000, 200).is_err());
+        assert!(prepare_token_early_withdraw(100, 0, 1_225_000, 0).is_err());
     }
 }
