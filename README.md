@@ -78,8 +78,10 @@ anchor build
 ```bash
 node tests/account-layout-compatibility.test.mjs
 cargo test -p toothfairy-escrow --lib
-# The focused USDC suite runs against an isolated local validator.
-./node_modules/.bin/ts-mocha -p ./tsconfig.json -t 180000 tests/usdc-escrow-v2.ts
+# Both lifecycle suites run against fresh isolated local validators. The helper
+# binds to loopback explicitly for compatibility with current Agave releases.
+bash scripts/run-isolated-integration.sh tests/toothfairy-escrow.ts
+bash scripts/run-isolated-integration.sh tests/usdc-escrow-v2.ts
 ```
 
 ### Deploy

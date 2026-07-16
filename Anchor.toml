@@ -1,5 +1,5 @@
 [toolchain]
-anchor_version = "0.32.1"
+anchor_version = "0.30.1"
 
 [features]
 seeds = false
@@ -18,8 +18,9 @@ toothfairy_escrow = "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC"
 url = "https://api.apr.dev"
 
 [provider]
-# Set ANCHOR_PROVIDER_URL or use: solana config set --url <your-rpc-url>
-cluster = "mainnet"
+# Keep the repository safe by default. Remote deployments must pass an explicit
+# cluster override; a plain `anchor test` or `anchor deploy` stays local.
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [test]
