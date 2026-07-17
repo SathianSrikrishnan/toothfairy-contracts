@@ -616,4 +616,39 @@ describe("toothfairy-escrow", () => {
       console.log("  ✓ Wrong guardian correctly rejected");
     }
   });
+
+  it("Transfers config and treasury control to a multisig-style authority and back", async () => {
+    const replacement = Keypair.generate();
+
+    await program.methods
+      .transferConfigAuthority(replacement.publicKey)
+      .accounts({ authority: guardian.publicKey, config: configPda })
+      .rpc();
+    expect((await program.account.config.fetch(configPda)).authority.toBase58())
+      .to.equal(replacement.publicKey.toBase58());
+
+    await program.methods
+      .transferConfigAuthority(guardian.publicKey)
+      .accounts({ authority: replacement.publicKey, config: configPda })
+      .signers([replacement])
+      .rpc();
+
+    await program.methods
+      .transferTreasuryAuthority(replacement.publicKey)
+      .accounts({ authority: guardian.publicKey, treasury: treasuryPda })
+      .rpc();
+    expect((await program.account.treasury.fetch(treasuryPda)).authority.toBase58())
+      .to.equal(replacement.publicKey.toBase58());
+
+    await program.methods
+      .transferTreasuryAuthority(guardian.publicKey)
+      .accounts({ authority: replacement.publicKey, treasury: treasuryPda })
+      .signers([replacement])
+      .rpc();
+
+    expect((await program.account.config.fetch(configPda)).authority.toBase58())
+      .to.equal(guardian.publicKey.toBase58());
+    expect((await program.account.treasury.fetch(treasuryPda)).authority.toBase58())
+      .to.equal(guardian.publicKey.toBase58());
+  });
 });

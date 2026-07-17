@@ -27,6 +27,7 @@ wallet = "~/.config/solana/id.json"
 startup_wait = 30000
 
 [test.validator]
+bind_address = "127.0.0.1"
 
 [scripts]
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

@@ -4,7 +4,9 @@
   "description": "Tooth Fairy Network — Solana smart contracts",
   "scripts": {
     "test": "anchor test",
-    "test:compat": "node --test tests/account-layout-compatibility.test.mjs"
+    "test:compat": "node --test tests/account-layout-compatibility.test.mjs",
+    "test:release-config": "node --test tests/release-config.test.mjs tests/suite-isolation.test.mjs tests/mainnet-usdc-preflight.test.mjs",
+    "preflight:mainnet-usdc": "node scripts/mainnet-usdc-preflight.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

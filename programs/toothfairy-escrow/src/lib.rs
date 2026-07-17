@@ -158,6 +158,20 @@ fn validate_token_treasury_withdraw(
     Ok(())
 }
 
+fn validate_admin_authority_transfer(
+    signer: Pubkey,
+    current_authority: Pubkey,
+    new_authority: Pubkey,
+) -> Result<()> {
+    require_keys_eq!(
+        signer,
+        current_authority,
+        TfnError::UnauthorizedAuthorityTransfer
+    );
+    require!(new_authority != Pubkey::default(), TfnError::InvalidNewAuthority);
+    Ok(())
+}
+
 #[program]
 pub mod toothfairy_escrow {
     use super::*;
@@ -194,6 +208,21 @@ pub mod toothfairy_escrow {
         token_config.bump = ctx.bumps.token_config;
 
         msg!("Token rail configured for mint {}", token_config.allowed_mint);
+        Ok(())
+    }
+
+    /// Transfer emergency/config control to a new authority, such as a multisig vault.
+    pub fn transfer_config_authority(
+        ctx: Context<TransferConfigAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        validate_admin_authority_transfer(
+            ctx.accounts.authority.key(),
+            ctx.accounts.config.authority,
+            new_authority,
+        )?;
+        ctx.accounts.config.authority = new_authority;
+        msg!("Config authority transferred to {}", new_authority);
         Ok(())
     }
 
@@ -405,6 +434,21 @@ pub mod toothfairy_escrow {
             lock_until
         );
 
+        Ok(())
+    }
+
+    /// Transfer SOL-fee treasury control to a new authority, such as a multisig vault.
+    pub fn transfer_treasury_authority(
+        ctx: Context<TransferTreasuryAuthority>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        validate_admin_authority_transfer(
+            ctx.accounts.authority.key(),
+            ctx.accounts.treasury.authority,
+            new_authority,
+        )?;
+        ctx.accounts.treasury.authority = new_authority;
+        msg!("Treasury authority transferred to {}", new_authority);
         Ok(())
     }
 
@@ -1212,6 +1256,19 @@ pub struct InitializeTokenConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct TransferConfigAuthority<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = authority.key() == config.authority @ TfnError::UnauthorizedAuthorityTransfer,
+    )]
+    pub config: Account<'info, Config>,
+}
+
 /// Token-config authority withdraws accumulated allowlisted-token fees.
 #[derive(Accounts)]
 pub struct WithdrawTokenTreasury<'info> {
@@ -1797,6 +1854,19 @@ pub struct InitializeTreasury<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct TransferTreasuryAuthority<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"treasury"],
+        bump = treasury.bump,
+        constraint = authority.key() == treasury.authority @ TfnError::UnauthorizedAuthorityTransfer,
+    )]
+    pub treasury: Account<'info, Treasury>,
+}
+
 /// Withdraw accumulated fees. Only the treasury authority can call this.
 #[derive(Accounts)]
 pub struct WithdrawTreasury<'info> {
@@ -1949,6 +2019,10 @@ pub enum TfnError {
     NothingToWithdraw,
     #[msg("Token treasury does not have enough available units")]
     InsufficientTokenTreasuryBalance,
+    #[msg("Only the current admin authority can transfer control")]
+    UnauthorizedAuthorityTransfer,
+    #[msg("The new admin authority cannot be the system default address")]
+    InvalidNewAuthority,
 }
 
 #[cfg(test)]
@@ -2127,5 +2201,19 @@ mod token_v2_tests {
             100_000,
         )
         .is_err());
+    }
+
+    #[test]
+    fn permits_only_explicit_nonzero_admin_authority_transfers() {
+        let authority = Pubkey::new_unique();
+        let replacement = Pubkey::new_unique();
+        assert!(validate_admin_authority_transfer(authority, authority, replacement).is_ok());
+        assert!(validate_admin_authority_transfer(
+            Pubkey::new_unique(),
+            authority,
+            replacement,
+        )
+        .is_err());
+        assert!(validate_admin_authority_transfer(authority, authority, Pubkey::default()).is_err());
     }
 }

@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-07-17",
+  "mode": "read-only-mainnet-preflight",
+  "network": "solana-mainnet-beta",
+  "programId": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "programDataAddress": "5ZUXyjYZaXAbSAC4EQk2Xu5HhEcogamn7gsG4Mnr7zkM",
+  "lastDeploySlotBeforeUsdcV2": "409717242",
+  "currentUpgradeAuthority": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "currentConfigAuthority": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "currentTreasuryAuthority": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "canonicalCircleUsdcMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "canonicalCircleUsdcDecimals": 6,
+  "tokenConfigBeforeRelease": null,
+  "preflightBlockers": [],
+  "targetMultisigVault": null,
+  "status": "ready-for-multisig-signers-not-ready-to-deploy"
+}

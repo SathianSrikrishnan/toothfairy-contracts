@@ -5,8 +5,9 @@ A multi-depositor escrow program for preserving separate SOL and canonical-USDC 
 ## Release status
 
 - **Mainnet today:** the deployed program supports native SOL only.
-- **This branch:** USDC deposit, lock, claim, refund, early release, and fee withdrawal pass isolated local-validator tests.
-- **Not yet deployed:** USDC remains off devnet and mainnet until the complete regression and security gates pass.
+- **This branch:** SOL and USDC pass one combined 29-test local-validator regression using the pinned Anchor 0.30.1 release toolchain.
+- **Authority migration:** additive config and treasury transfer instructions allow the existing single-wallet controls to move to a 2-of-3 multisig without changing deployed account layouts.
+- **Not yet deployed:** USDC remains off mainnet until the multisig signers are created and the tiny canary receipt passes.
 - **Compatibility rule:** existing `Config`, `ChildProfile`, `Milestone`, `Deposit`, and `Treasury` layouts and SOL instructions remain unchanged.
 
 ## Deployed SOL program on Mainnet
@@ -78,11 +79,16 @@ anchor build
 ```bash
 node tests/account-layout-compatibility.test.mjs
 cargo test -p toothfairy-escrow --lib
-# Both lifecycle suites run against fresh isolated local validators. The helper
-# binds to loopback explicitly for compatibility with current Agave releases.
-bash scripts/run-isolated-integration.sh tests/toothfairy-escrow.ts
-bash scripts/run-isolated-integration.sh tests/usdc-escrow-v2.ts
+# Installs the known compatible nightly once, then runs the exact combined
+# SOL + USDC lifecycle regression under Anchor CLI 0.30.1.
+bash scripts/install-release-toolchain.sh
+bash scripts/run-release-regression.sh
+npm run test:release-config
+npm run test:compat
 ```
+
+The mainnet sequence and stop conditions are documented in
+[`docs/MAINNET-USDC-RELEASE.md`](docs/MAINNET-USDC-RELEASE.md).
 
 ### Deploy
 ```bash

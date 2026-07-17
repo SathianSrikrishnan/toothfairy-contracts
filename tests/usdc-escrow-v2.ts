@@ -62,14 +62,19 @@ describe("USDC escrow V2 deposit rail", () => {
       program.programId,
     );
 
-    await program.methods
-      .initializeConfig()
-      .accounts({
-        authority: guardian,
-        config: configPda,
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
+    const existingConfig = await program.account.config.fetchNullable(configPda);
+    if (existingConfig) {
+      expect(existingConfig.authority.equals(guardian)).to.equal(true);
+    } else {
+      await program.methods
+        .initializeConfig()
+        .accounts({
+          authority: guardian,
+          config: configPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+    }
 
     usdcMint = await createMint(
       provider.connection,
