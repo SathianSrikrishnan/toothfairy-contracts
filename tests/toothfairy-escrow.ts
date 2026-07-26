@@ -299,8 +299,8 @@ describe("toothfairy-escrow", () => {
     }
   });
 
-  // ── 9. Early withdrawal of Grandma's locked deposit (10% penalty) ──
-  it("Early withdrawal with 10% penalty", async () => {
+  // ── 9. Early release of Grandma's locked deposit (no second fee) ──
+  it("Releases the full protected amount early without a second fee", async () => {
     const [depositPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("deposit"), milestonePda0.toBuffer(), Buffer.from([1, 0, 0, 0])],
       program.programId
@@ -308,8 +308,7 @@ describe("toothfairy-escrow", () => {
 
     const depositBefore = await program.account.deposit.fetch(depositPda);
     const amount = depositBefore.amountLamports.toNumber();
-    const expectedPenalty = Math.floor(amount * 1000 / 10000); // 10%
-    const expectedPayout = amount - expectedPenalty;
+    const expectedPayout = amount;
 
     const childBalanceBefore = await provider.connection.getBalance(childWallet.publicKey);
     const treasuryBefore = await program.account.treasury.fetch(treasuryPda);
@@ -334,9 +333,9 @@ describe("toothfairy-escrow", () => {
 
     expect(depositAfter.claimed).to.be.true;
     expect(childBalanceAfter - childBalanceBefore).to.equal(expectedPayout);
-    expect(treasuryAfter.totalCollected.toNumber() - treasuryBefore.totalCollected.toNumber()).to.equal(expectedPenalty);
+    expect(treasuryAfter.totalCollected.toNumber() - treasuryBefore.totalCollected.toNumber()).to.equal(0);
 
-    console.log(`  ✓ Early withdrawal: ${expectedPayout / LAMPORTS_PER_SOL} SOL to child, ${expectedPenalty / LAMPORTS_PER_SOL} SOL penalty to treasury`);
+    console.log(`  ✓ Early release: ${expectedPayout / LAMPORTS_PER_SOL} SOL to child, no second platform fee`);
   });
 
   // ── 10. Prevents double-claim ──

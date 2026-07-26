@@ -24,9 +24,6 @@ const REFUND_GRACE_PERIOD: i64 = 7 * 24 * 60 * 60;
 /// Platform fee in basis points (200 = 2.0%)
 const PLATFORM_FEE_BPS: u64 = 200;
 
-/// Early withdrawal penalty in basis points (1000 = 10%)
-const EARLY_WITHDRAW_PENALTY_BPS: u64 = 1000;
-
 /// Basis points denominator
 const FEE_DENOMINATOR: u64 = 10_000;
 
@@ -129,14 +126,14 @@ fn prepare_token_early_withdraw(
     state: u8,
     amount_units: u64,
     lock_until: i64,
-) -> Result<(u64, u64)> {
+) -> Result<u64> {
     require!(state == TOKEN_DEPOSIT_ACTIVE, TfnError::AlreadyClaimed);
     require!(amount_units > 0, TfnError::NothingToClaim);
     require!(
         lock_until > 0 && now < lock_until,
         TfnError::DepositNotLocked
     );
-    split_token_amount(amount_units, EARLY_WITHDRAW_PENALTY_BPS)
+    Ok(amount_units)
 }
 
 fn validate_token_treasury_withdraw(
@@ -734,7 +731,7 @@ pub mod toothfairy_escrow {
         Ok(())
     }
 
-    /// Release a still-locked USDC deposit early with the same ten-percent penalty as SOL.
+    /// Release a still-locked USDC deposit early without charging a second platform fee.
     pub fn early_withdraw_token_deposit(
         ctx: Context<EarlyWithdrawTokenDeposit>,
     ) -> Result<()> {
@@ -742,7 +739,7 @@ pub mod toothfairy_escrow {
 
         let now = Clock::get()?.unix_timestamp;
         let deposit = &ctx.accounts.token_deposit;
-        let (penalty_units, payout_units) = prepare_token_early_withdraw(
+        let payout_units = prepare_token_early_withdraw(
             now,
             deposit.state,
             deposit.amount_units,
@@ -770,23 +767,6 @@ pub mod toothfairy_escrow {
             &deposit_bump,
         ];
 
-        if penalty_units > 0 {
-            token::transfer_checked(
-                CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
-                    TransferChecked {
-                        from: ctx.accounts.deposit_vault.to_account_info(),
-                        mint: ctx.accounts.token_mint.to_account_info(),
-                        to: ctx.accounts.token_treasury_vault.to_account_info(),
-                        authority: ctx.accounts.token_deposit.to_account_info(),
-                    },
-                    &[signer_seeds],
-                ),
-                penalty_units,
-                ctx.accounts.token_config.decimals,
-            )?;
-        }
-
         token::transfer_checked(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -811,11 +791,7 @@ pub mod toothfairy_escrow {
             .checked_add(amount_units)
             .ok_or(TfnError::ArithmeticOverflow)?;
 
-        msg!(
-            "USDC early release: {} to child, {} penalty",
-            payout_units,
-            penalty_units
-        );
+        msg!("USDC early release: {} to child, no second fee", payout_units);
         Ok(())
     }
 
@@ -866,8 +842,7 @@ pub mod toothfairy_escrow {
     }
 
     /// Early withdrawal — guardian can withdraw a time-locked deposit before maturity.
-    /// A 10% penalty is deducted and sent to the treasury. 90% goes to the child wallet.
-    /// Use this for emergencies or changed plans — the penalty discourages frivolous withdrawals.
+    /// The full protected amount goes to the child wallet; no second platform fee is charged.
     pub fn early_withdraw(ctx: Context<EarlyWithdraw>) -> Result<()> {
         // Check pause
         require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
@@ -886,34 +861,22 @@ pub mod toothfairy_escrow {
 
         let amount = deposit.amount_lamports;
 
-        // Calculate 10% penalty
-        let penalty = amount * EARLY_WITHDRAW_PENALTY_BPS / FEE_DENOMINATOR;
-        let payout = amount - penalty;
-
-        // Transfer penalty to treasury
-        if penalty > 0 {
-            **ctx.accounts.deposit_account.to_account_info().try_borrow_mut_lamports()? -= penalty;
-            **ctx.accounts.treasury.to_account_info().try_borrow_mut_lamports()? += penalty;
-            ctx.accounts.treasury.total_collected += penalty;
-        }
-
-        // Transfer remaining 90% to child wallet
-        **ctx.accounts.deposit_account.to_account_info().try_borrow_mut_lamports()? -= payout;
-        **ctx.accounts.child_wallet.to_account_info().try_borrow_mut_lamports()? += payout;
+        // Transfer the full protected amount to the child wallet.
+        **ctx.accounts.deposit_account.to_account_info().try_borrow_mut_lamports()? -= amount;
+        **ctx.accounts.child_wallet.to_account_info().try_borrow_mut_lamports()? += amount;
 
         // Mark claimed
         let deposit = &mut ctx.accounts.deposit_account;
         deposit.claimed = true;
         deposit.claimed_at = Some(now);
 
-        // Update profile totals (payout amount, not full — penalty is lost)
+        // Update profile totals with the full protected amount.
         let profile = &mut ctx.accounts.child_profile;
-        profile.total_claimed += payout;
+        profile.total_claimed += amount;
 
         msg!(
-            "Early withdrawal: {} lamports to child, {} lamports penalty to treasury (deposit #{})",
-            payout,
-            penalty,
+            "Early release: {} lamports to child, no second fee (deposit #{})",
+            amount,
             deposit.deposit_index
         );
 
@@ -1121,7 +1084,7 @@ pub struct Deposit {
     pub bump: u8,               // PDA bump seed
 }
 
-/// Platform treasury — collects 2% deposit fees + 10% early withdrawal penalties.
+/// Platform treasury collects the 2% funding fee.
 /// Single global PDA seeded by ["treasury"].
 #[account]
 #[derive(InitSpace)]
@@ -1608,7 +1571,7 @@ pub struct RefundTokenDeposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-/// Guardian releases a still-locked token deposit with a ten-percent penalty.
+/// Guardian releases a still-locked token deposit without a second platform fee.
 #[derive(Accounts)]
 pub struct EarlyWithdrawTokenDeposit<'info> {
     pub guardian: Signer<'info>,
@@ -1721,7 +1684,7 @@ pub struct ClaimDeposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Early withdrawal — guardian withdraws before maturity with 10% penalty.
+/// Early release lets the guardian release the full protected amount before maturity.
 #[derive(Accounts)]
 pub struct EarlyWithdraw<'info> {
     #[account(mut)]
@@ -1752,7 +1715,7 @@ pub struct EarlyWithdraw<'info> {
     )]
     pub child_wallet: UncheckedAccount<'info>,
 
-    /// Platform treasury — receives the 10% penalty
+    /// Platform treasury retained for instruction compatibility; no early-release fee is collected.
     #[account(
         mut,
         seeds = [b"treasury"],
@@ -2035,14 +1998,6 @@ mod token_v2_tests {
     }
 
     #[test]
-    fn splits_early_withdraw_penalty_in_base_units() {
-        assert_eq!(
-            split_token_amount(1_225_000, EARLY_WITHDRAW_PENALTY_BPS).unwrap(),
-            (122_500, 1_102_500),
-        );
-    }
-
-    #[test]
     fn rejects_token_fee_math_overflow() {
         assert!(split_token_amount(u64::MAX, FEE_DENOMINATOR).is_err());
     }
@@ -2169,7 +2124,7 @@ mod token_v2_tests {
     fn prepares_early_token_withdrawal_only_while_locked() {
         assert_eq!(
             prepare_token_early_withdraw(100, 0, 1_225_000, 200).unwrap(),
-            (122_500, 1_102_500),
+            1_225_000,
         );
         assert!(prepare_token_early_withdraw(200, 0, 1_225_000, 200).is_err());
         assert!(prepare_token_early_withdraw(100, 1, 1_225_000, 200).is_err());

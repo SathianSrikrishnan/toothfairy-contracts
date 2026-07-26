@@ -34,7 +34,7 @@
 
 **Steps:**
 
-1. Write failing Rust tests for 2% deposit fees, 10% early-withdraw penalties, minimum USDC units, overflow rejection, and lock timestamp calculation.
+1. Write failing Rust tests for 2% deposit fees, full early-release payouts, minimum USDC units, overflow rejection, and lock timestamp calculation.
 2. Run the Rust library tests and confirm the new tests fail for missing token helpers.
 3. Add `anchor-spl` and minimal checked-arithmetic helpers.
 4. Add `TokenConfig`, `TokenMilestone`, `TokenDeposit`, and token-deposit state without changing existing structs.
@@ -77,7 +77,7 @@
 
 **Steps:**
 
-1. Write failing tests for matured guardian claim, premature claim rejection, original-depositor refund, expired refund rejection, early-withdraw payout, and penalty.
+1. Write failing tests for matured guardian claim, premature claim rejection, original-depositor refund, expired refund rejection, and full early-release payout without a second fee.
 2. Implement PDA-signed transfers from the deposit vault.
 3. Record settlement state and timestamps before returning success.
 4. Run the focused tests and commit.

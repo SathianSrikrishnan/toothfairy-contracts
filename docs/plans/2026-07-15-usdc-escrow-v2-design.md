@@ -84,7 +84,7 @@ The client creates the deposit and treasury associated token accounts immediatel
 2. `deposit_token` — anyone deposits USDC; two percent goes to the token treasury vault and the net amount enters a deposit-specific vault.
 3. `claim_token_deposit` — guardian releases matured USDC to the child's associated token account.
 4. `refund_token_deposit` — original depositor reclaims the net amount during the seven-day grace period.
-5. `early_withdraw_token_deposit` — guardian releases early; ten percent goes to the token treasury and the remainder goes to the child.
+5. `early_withdraw_token_deposit` — guardian releases the full protected amount early; no second platform fee is charged.
 6. `withdraw_token_treasury` — token-config authority moves collected USDC fees to its associated token account.
 
 ## Token safety rules

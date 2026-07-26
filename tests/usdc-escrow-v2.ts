@@ -331,7 +331,7 @@ describe("USDC escrow V2 deposit rail", () => {
     }
   });
 
-  it("releases early with a ten-percent penalty", async () => {
+  it("releases the full protected USDC amount early without a second fee", async () => {
     const accounts = await depositAccounts(0);
     const childBefore = await getAccount(provider.connection, childUsdc);
     const treasuryBefore = await getAccount(provider.connection, tokenTreasuryVault);
@@ -359,8 +359,8 @@ describe("USDC escrow V2 deposit rail", () => {
     const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
     const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
 
-    expect(Number(childAfter.amount - childBefore.amount)).to.equal(1_102_500);
-    expect(Number(treasuryAfter.amount - treasuryBefore.amount)).to.equal(122_500);
+    expect(Number(childAfter.amount - childBefore.amount)).to.equal(1_225_000);
+    expect(Number(treasuryAfter.amount - treasuryBefore.amount)).to.equal(0);
     expect(Number(vaultAfter.amount)).to.equal(0);
     expect(deposit.state).to.equal(3);
   });
@@ -474,7 +474,7 @@ describe("USDC escrow V2 deposit rail", () => {
     const authorityBefore = await getAccount(provider.connection, depositorUsdc);
     const treasuryBefore = await getAccount(provider.connection, tokenTreasuryVault);
     await program.methods
-      .withdrawTokenTreasury(new anchor.BN(100_000))
+      .withdrawTokenTreasury(new anchor.BN(55_000))
       .accounts({
         authority: guardian,
         config: configPda,
@@ -488,7 +488,7 @@ describe("USDC escrow V2 deposit rail", () => {
 
     const authorityAfter = await getAccount(provider.connection, depositorUsdc);
     const treasuryAfter = await getAccount(provider.connection, tokenTreasuryVault);
-    expect(Number(authorityAfter.amount - authorityBefore.amount)).to.equal(100_000);
-    expect(Number(treasuryBefore.amount - treasuryAfter.amount)).to.equal(100_000);
+    expect(Number(authorityAfter.amount - authorityBefore.amount)).to.equal(55_000);
+    expect(Number(treasuryBefore.amount - treasuryAfter.amount)).to.equal(55_000);
   });
 });
