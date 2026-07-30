@@ -4,8 +4,27 @@
 
 - The existing mainnet program and SOL rail remain live.
 - The additive USDC rail passes the combined local SOL + USDC regression suite.
+- The audited release build at contract commit `afe639e` is 437,768 bytes with
+  SHA-256 `04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0`.
+  It builds for size and excludes Anchor's unused on-chain IDL management and
+  instruction-name logging. The separate 54,181-byte client IDL is unchanged.
 - The read-only preflight confirms the live program, current admin accounts, and Circle's canonical six-decimal mainnet USDC mint.
 - Mainnet USDC is not enabled and must remain hidden in the public product until the canary receipt is verified.
+
+## Exact upgrade liquidity
+
+The July 30 Mainnet rent quote for the audited 437,768-byte artifact is:
+
+- 437,805-byte temporary loader buffer: 3.04801368 SOL;
+- ProgramData target length 437,813 bytes: 3.04806936 SOL total rent;
+- existing ProgramData rent: 2.69227416 SOL;
+- permanent ProgramData top-up: 0.35579520 SOL;
+- total liquidity during the upgrade: 3.40380888 SOL before transaction fees.
+
+The buffer is temporary and should be closed after a verified upgrade so its
+rent can be recovered. Only the ProgramData top-up and network fees are
+permanent. This replaces the obsolete 5.33501400 SOL estimate for the earlier
+576,504-byte build.
 
 ## Why control moves first
 
