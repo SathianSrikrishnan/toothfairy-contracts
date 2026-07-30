@@ -5,9 +5,10 @@
   "scripts": {
     "test": "anchor test",
     "test:compat": "node --test tests/account-layout-compatibility.test.mjs",
-    "test:release-config": "node --test tests/release-config.test.mjs tests/suite-isolation.test.mjs tests/mainnet-usdc-preflight.test.mjs tests/mainnet-usdc-admin.test.mjs tests/mainnet-squads-verify.test.mjs",
+    "test:release-config": "node --test tests/release-config.test.mjs tests/suite-isolation.test.mjs tests/mainnet-usdc-preflight.test.mjs tests/mainnet-usdc-admin.test.mjs tests/mainnet-squads-verify.test.mjs tests/mainnet-squads-tx.test.mjs",
     "preflight:mainnet-usdc": "node scripts/mainnet-usdc-preflight.mjs",
-    "verify:mainnet-squads": "node scripts/mainnet-squads-verify.mjs"
+    "verify:mainnet-squads": "node scripts/mainnet-squads-verify.mjs",
+    "build:mainnet-squads-tx": "node scripts/mainnet-squads-tx.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

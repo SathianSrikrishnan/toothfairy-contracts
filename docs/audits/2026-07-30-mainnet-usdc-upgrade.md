@@ -15,8 +15,12 @@
   `04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0`.
 - The live bytes exactly match the approved release artifact.
 - Program status after upgrade: paused.
+- Config and SOL treasury authority migration transaction:
+  `4c7rkBd894UpsoRMUAF2xCbSjy1WP39Nsc1jxDiyropwm7P3K9kGEauP3brA8mgQRiKCfomiJ2TqWLHJVUUQ7HyH`.
+- Program upgrade authority migration transaction:
+  `r5vvD7zJuUknwYyotJQcZXepE721cTMHFZuCou8rEkaNcbZoJRwtxztmWWRsCR45UVd7inDz84Sf6ErAkJ5yzEz`.
 - Current program/config/treasury authority:
-  `5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq`.
+  `Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko`.
 - Token config: not initialized.
 
 ## Verified custody destination
@@ -37,14 +41,17 @@
 
 The following are not complete and must not be represented as live:
 
-1. Transfer program upgrade, config, and SOL treasury authorities to the Squads vault.
-2. Through Squads, initialize only canonical Circle Mainnet USDC
+1. [Done] Transfer program upgrade, config, and SOL treasury authorities to the
+   Squads vault.
+2. Top up the Squads vault by `0.001 SOL`. Its existing `0.001 SOL` is below
+   the `0.0014616 SOL` rent required to create the 82-byte token-config account.
+3. Through Squads, initialize only canonical Circle Mainnet USDC
    `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` with six decimals.
-3. Verify all authorities and token configuration while paused.
-4. Through Squads, unpause for a controlled canary window.
-5. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
-6. Deposit `1.00 USDC` and verify `0.02 USDC` fee / `0.98 USDC` protected.
-7. Keep the public application USDC gate off until both receipts and displayed
+4. Verify all authorities and token configuration while paused.
+5. Through Squads, unpause for a controlled canary window.
+6. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
+7. Deposit `1.00 USDC` and verify `0.02 USDC` fee / `0.98 USDC` protected.
+8. Keep the public application USDC gate off until both receipts and displayed
    balances pass.
 
 No canary, public application cutover, or Terms change is recorded by this
