@@ -5,14 +5,16 @@
   "scripts": {
     "test": "anchor test",
     "test:compat": "node --test tests/account-layout-compatibility.test.mjs",
-    "test:release-config": "node --test tests/release-config.test.mjs tests/suite-isolation.test.mjs tests/mainnet-usdc-preflight.test.mjs",
-    "preflight:mainnet-usdc": "node scripts/mainnet-usdc-preflight.mjs"
+    "test:release-config": "node --test tests/release-config.test.mjs tests/suite-isolation.test.mjs tests/mainnet-usdc-preflight.test.mjs tests/mainnet-usdc-admin.test.mjs tests/mainnet-squads-verify.test.mjs",
+    "preflight:mainnet-usdc": "node scripts/mainnet-usdc-preflight.mjs",
+    "verify:mainnet-squads": "node scripts/mainnet-squads-verify.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
-    "@solana/web3.js": "^1.95.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.0",
     "@solana/spl-token": "^0.4.0",
-    "@metaplex-foundation/mpl-token-metadata": "^3.2.0"
+    "@solana/web3.js": "^1.95.0",
+    "@sqds/multisig": "2.1.4"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",
