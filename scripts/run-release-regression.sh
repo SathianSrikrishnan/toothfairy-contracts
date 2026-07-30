@@ -3,7 +3,9 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 anchor_cli="${TFN_ANCHOR_CLI:-$HOME/.avm/versions/0.30.1/bin/anchor}"
-export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"
+# Keep Windows PATH entries with spaces out of Anchor's spawned test commands.
+# Every executable required by this release regression is in these WSL paths.
+export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export RUSTUP_TOOLCHAIN="nightly-2025-04-14"
 
 if [[ ! -x "$anchor_cli" ]]; then
