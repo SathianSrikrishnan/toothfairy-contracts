@@ -77,8 +77,19 @@
   units, invokes only Squads `VaultTransactionExecute` and TFN `unpause`, and
   quotes a raw network fee of `5,000` lamports before the Squads UI's service
   payment and dynamic priority fee.
-- Execution and the resulting `paused=false` state are not complete. No canary
-  deposit is authorized by this receipt.
+- Execution transaction:
+  `nCTW6rcCnzdKeArqqaESFNAhXa7oecsY5fTMJ7wMwcfyasPcZJkUVCtgsZeXRG6KMXgkLYs86JKiMNhxSsh9bGY`.
+- Execution finalized at slot `436243568`.
+- Exact execution payer debit: `107,374` lamports (`0.000107374 SOL`),
+  comprising the `100,000` lamport Squads service payment and `7,374`
+  lamport network/priority fee. This was below the approved `0.0002 SOL`
+  maximum.
+- Execution logs contain `VaultTransactionExecute` and
+  `Contract UNPAUSED by Eu4B39...uYko`; no transfer or withdrawal occurred
+  and the Squads vault balance did not change.
+- Independent Anchor decoding after finalization records config authority
+  `Eu4B39...uYko` and `paused=false`.
+- P2 is complete. No canary deposit is authorized by this receipt.
 
 ## Verified custody destination
 
@@ -104,7 +115,7 @@ The following are not complete and must not be represented as live:
 3. [Done] Through Squads, initialize only canonical Circle Mainnet USDC
    `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` with six decimals.
 4. [Done] Verify all authorities and token configuration while paused.
-5. Through Squads, unpause for a controlled canary window.
+5. [Done] Through Squads, unpause for a controlled canary window.
 6. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
 7. Deposit `1.00 USDC` and verify `0.02 USDC` fee / `0.98 USDC` protected.
 8. Keep the public application USDC gate off until both receipts and displayed
