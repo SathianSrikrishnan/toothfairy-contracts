@@ -67,10 +67,18 @@
   `44USggbuAeHoexpJCjEi3vpB8t61CMZrJhDNdz4ZfJ7X`.
 - Decoded invoked program:
   `FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC`.
-- Current proposal state: `Active`, approved only by Signer A
-  `5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9`.
-- Signer B approval, execution, and the resulting `paused=false` state are
-  not complete. No canary deposit is authorized by this receipt.
+- Signer B approval transaction:
+  `5Yo5jUFsPzPnyv2EJJsPEfxEpPqyajxk4J8Mwt97cEcdbKV3TPrWpNPFp74jbsod47uWTi9gbkgcYiVpB4CcLb38`.
+- Signer B approval finalized at slot `436242706`; exact payer debit was
+  `107,526` lamports (`100,000` Squads service payment plus `7,526`
+  network/priority fee).
+- Current proposal state: `Approved`, with exactly Signers A and B recorded.
+- A fresh unsigned execution simulation succeeds, consumes `36,548` compute
+  units, invokes only Squads `VaultTransactionExecute` and TFN `unpause`, and
+  quotes a raw network fee of `5,000` lamports before the Squads UI's service
+  payment and dynamic priority fee.
+- Execution and the resulting `paused=false` state are not complete. No canary
+  deposit is authorized by this receipt.
 
 ## Verified custody destination
 
