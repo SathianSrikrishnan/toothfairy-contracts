@@ -117,9 +117,44 @@ The following are not complete and must not be represented as live:
 4. [Done] Verify all authorities and token configuration while paused.
 5. [Done] Through Squads, unpause for a controlled canary window.
 6. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
-7. Deposit `1.00 USDC` and verify `0.02 USDC` fee / `0.98 USDC` protected.
+7. [Done with cost-control deviation] Deposit `1.00 USDC` and verify
+   `0.02 USDC` fee / `0.98 USDC` protected.
 8. Keep the public application USDC gate off until both receipts and displayed
    balances pass.
 
-No canary, public application cutover, or Terms change is recorded by this
-receipt yet.
+No public application cutover or production Terms change is recorded by this
+receipt.
+
+## C0 canonical-USDC Mainnet canary
+
+- Depositor: Signer A
+  `5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9`.
+- Existing founder-controlled milestone:
+  `BV3ALxZwwvzFkMwJztpFMXGAmDhK4kx4RAhY5mBsgVtJ`.
+- Finalized transaction:
+  `4YzU7S5pDxDX2DsFcoiKD27zhbUKqjZyoBxWvoroJ4G9UrRdAwoGbi4d9wtE3bn4Z1vYe8CzQB6tVVKbJ9dGMCif`.
+- Finalized slot: `436248601`.
+- Canonical mint:
+  `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`.
+- Gross source debit: exactly `1,000,000` base units (`1.00 USDC`).
+- TFN fee vault credit: exactly `20,000` base units (`0.02 USDC`).
+- Protected vault credit: exactly `980,000` base units (`0.98 USDC`).
+- Token-deposit PDA:
+  `Hkg4F79YRGwjuF49SnXwk5LQxUh64P8hP1t5RPwpPecR`.
+- Protected vault:
+  `DjJ6NVffQhmhZ9YeYaioaJWuseu18YyobjoTGtP5WrQn`.
+- Fee vault:
+  `HU9Gho7iDob5QkMb4zsfk5iLzZcZAFpXvFVEzS5GUMZ4`.
+- Receipt owner is the TFN program; receipt amount, vault address, depositor,
+  mint, state, and deposit index independently decode exactly.
+- Remaining Signer A source balance: `1.00 USDC`.
+- Program remains `paused=false`; the public application feature remains off.
+
+The asset/economics canary passed, but its SOL cost ceiling did not. The
+approved maximum was `0.0077 SOL`; the finalized payer debit was
+`0.007833440 SOL`, an overrun of `0.000133440 SOL`. The decoded debit is
+`0.007753440 SOL` account rent plus an `0.000080000 SOL` transaction fee.
+The preview undercounted the variable-length token-deposit account as 176
+bytes instead of the live 211 bytes, and Phantom added compute-budget priority
+instructions. C1 is stopped until signed-message fee verification and the live
+account size are enforced before broadcast.
