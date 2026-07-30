@@ -1,4 +1,4 @@
-# Mainnet USDC upgrade receipt — in progress
+# Mainnet USDC upgrade receipt — configuration verified
 
 ## Verified completed state
 
@@ -21,7 +21,29 @@
   `r5vvD7zJuUknwYyotJQcZXepE721cTMHFZuCou8rEkaNcbZoJRwtxztmWWRsCR45UVd7inDz84Sf6ErAkJ5yzEz`.
 - Current program/config/treasury authority:
   `Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko`.
-- Token config: not initialized.
+- Canonical USDC proposal account:
+  `8exKGRBPpN2D2uNQVxnaRmGDQypbKnAU5gpjhjMJchTa`.
+- Canonical USDC Squads transaction:
+  `Gcq14R9dxcS1iBXAFssBAh9hXcP8rPrkwEwRdyB6rZAq`.
+- Proposal approvals:
+  - Signer A: `5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9`;
+  - Signer B: `2UPEsHM9HCwxrfeyGun1Mx312yEktJe9jgF8PsuaTcHb`.
+- Signer B approval transaction:
+  `T86td4L6wdbsqMP9S2bkPgx5mbhQwvnJj4dSL7k8f4Hz8XMfQ8qotdQgKZKkFCJ3h71cbx1c79oxCquJwyYefzG`.
+- Canonical USDC execution transaction:
+  `4nawDqbxwhPQXshW4PtPaB7hTeGb9Vz2UZbtHKnQfGGdjVLqQmE6Em5KttMcyN2QHiZHNGL57nWGeyBci5sWW7K9`.
+- Execution slot: `436239100`.
+- Execution network fee: `8,389` lamports.
+- Token-config PDA:
+  `8xRT3sCyveZaFhoGgtsn8ZvTx4YwxDYSZuCs9gfdH6UM`.
+- Token-config rent: `1,461,600` lamports for 82 bytes.
+- Allowed mint:
+  `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`.
+- Decimals: `6`.
+- Token-config authority:
+  `Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko`.
+- Post-execution Squads vault balance: `1,038,400` lamports.
+- Program status after configuration: paused.
 
 ## Verified custody destination
 
@@ -43,11 +65,10 @@ The following are not complete and must not be represented as live:
 
 1. [Done] Transfer program upgrade, config, and SOL treasury authorities to the
    Squads vault.
-2. Top up the Squads vault by `0.001 SOL`. Its existing `0.001 SOL` is below
-   the `0.0014616 SOL` rent required to create the 82-byte token-config account.
-3. Through Squads, initialize only canonical Circle Mainnet USDC
+2. [Done] Fund the Squads vault for token-config rent.
+3. [Done] Through Squads, initialize only canonical Circle Mainnet USDC
    `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` with six decimals.
-4. Verify all authorities and token configuration while paused.
+4. [Done] Verify all authorities and token configuration while paused.
 5. Through Squads, unpause for a controlled canary window.
 6. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
 7. Deposit `1.00 USDC` and verify `0.02 USDC` fee / `0.98 USDC` protected.

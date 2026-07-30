@@ -5,7 +5,7 @@
 - The additive program upgrade is deployed on Mainnet at slot `436210094`.
 - The live ProgramData bytes are 437,768 bytes and exactly match SHA-256
   `04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0`.
-- The program is paused while custody migration and canaries are completed.
+- The program is paused while the controlled Mainnet canaries are prepared.
 - The additive USDC rail passes the combined local SOL + USDC regression suite.
 - The audited release build at contract commit `afe639e` is 437,768 bytes with
   SHA-256 `04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0`.
@@ -15,6 +15,12 @@
 - The Squads account at `1P8a83j4SK28JCSTMpv5w7HS92ko5Ki5xGcyfy68uz5`
   is independently decoded on chain as an exact 2-of-3 of Signers A, B, and C.
   Its vault is `Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko`.
+- Program upgrade, config, and SOL treasury authority are verified as that
+  Squads vault.
+- The 82-byte token-config PDA is initialized with only canonical Circle
+  Mainnet USDC `EPjFWdd5...Dt1v`, six decimals, and the Squads vault as
+  authority. The finalized execution receipt is
+  `4nawDqbxwhPQXshW4PtPaB7hTeGb9Vz2UZbtHKnQfGGdjVLqQmE6Em5KttMcyN2QHiZHNGL57nWGeyBci5sWW7K9`.
 - Mainnet USDC is not enabled and must remain hidden in the public product until the canary receipt is verified.
 
 ## Exact upgrade liquidity
@@ -56,13 +62,13 @@ Use three independent adult/operator signers. Do not use a child's recipient wal
 3. [Done] Create and independently verify the 2-of-3 Squads multisig.
 4. [Done] Pause through the existing config authority, then deploy and hash-verify
    the audited additive program upgrade using the existing upgrade authority.
-5. In the same controlled release window, transfer:
+5. [Done] In the same controlled release window, transfer:
    - program upgrade authority to the Squads vault;
    - config authority to the Squads vault;
    - SOL treasury authority to the Squads vault.
-6. Through Squads, initialize the token config with only Circle mainnet USDC:
+6. [Done] Through Squads, initialize the token config with only Circle mainnet USDC:
    `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (6 decimals).
-7. Keep the program paused while verifying all three authorities and the token allowlist.
+7. [Done] Keep the program paused while verifying all three authorities and the token allowlist.
 8. Unpause through Squads for a tightly controlled canary window.
 9. Run one canary Toothlight with a `0.01 SOL` deposit and a `1.00 USDC`
    deposit. Verify exact fees and protected amounts:

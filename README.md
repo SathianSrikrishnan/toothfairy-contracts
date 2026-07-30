@@ -5,10 +5,12 @@ A multi-depositor escrow program for preserving separate SOL and canonical-USDC 
 ## Release status
 
 - **Mainnet program:** the additive SOL + USDC program bytes are deployed and
-  hash-verified, but the program is paused pending authority migration and
-  canaries.
+  hash-verified. Canonical Circle USDC is configured under the 2-of-3 Squads
+  authority, and the program remains paused pending controlled canaries.
 - **This branch:** SOL and USDC pass one combined 29-test local-validator regression using the pinned Anchor 0.30.1 release toolchain.
-- **Authority migration:** additive config and treasury transfer instructions allow the existing single-wallet controls to move to a 2-of-3 multisig without changing deployed account layouts.
+- **Authority migration:** program upgrade, config, and treasury controls are
+  verified under the 2-of-3 Squads vault without changing legacy account
+  layouts.
 - **Not yet public:** USDC remains feature-gated until the verified 2-of-3
   multisig assumes authority and the SOL + USDC Mainnet canaries pass.
 - **Compatibility rule:** existing `Config`, `ChildProfile`, `Milestone`, `Deposit`, and `Treasury` layouts and SOL instructions remain unchanged.
@@ -23,7 +25,7 @@ A multi-depositor escrow program for preserving separate SOL and canonical-USDC 
 | **Explorer** | [View on Solscan](https://solscan.io/account/FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC) |
 
 The table identifies the upgraded Mainnet program. Public USDC support still
-requires the remaining authority, configuration, canary, and application gates
+requires the remaining canary and application gates
 in [`docs/MAINNET-USDC-RELEASE.md`](docs/MAINNET-USDC-RELEASE.md).
 
 ## Legacy SOL architecture overview
