@@ -15,4 +15,15 @@ fi
 
 cd "$repo_root"
 export RUSTFLAGS="${RUSTFLAGS:-} --cfg procmacro2_semver_exempt"
-exec "$anchor_cli" test
+"$anchor_cli" test
+
+# Anchor's test build includes on-chain IDL management and instruction-name
+# logging. Neither is needed by the deployable program: the client IDL remains
+# a separate JSON artifact. Rebuild last with the audited release features so
+# target/deploy always contains the rent-efficient Mainnet candidate.
+cargo build-sbf \
+  --manifest-path programs/toothfairy-escrow/Cargo.toml \
+  --features no-idl,no-log-ix-name \
+  --sbf-out-dir target/deploy
+
+node --test tests/release-config.test.mjs

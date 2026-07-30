@@ -1,10 +1,20 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::get_associated_token_address,
-    token::{self, Mint as TokenMint, Token, TokenAccount, TransferChecked},
-};
+use anchor_spl::token::{self, Mint as TokenMint, Token, TokenAccount, TransferChecked};
 
 declare_id!("FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC");
+
+const ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
+    140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142, 13, 131, 11, 90, 19, 153,
+    218, 255, 16, 132, 4, 142, 123, 216, 219, 233, 248, 89,
+]);
+
+fn derive_classic_associated_token_address(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(
+        &[owner.as_ref(), anchor_spl::token::ID.as_ref(), mint.as_ref()],
+        &ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+    .0
+}
 
 /// Maximum number of milestones per child (humans have 20 baby teeth)
 const MAX_MILESTONES: u8 = 20;
@@ -462,7 +472,7 @@ pub mod toothfairy_escrow {
             ctx.accounts.token_treasury_vault.amount,
         )?;
 
-        let expected_treasury_vault = get_associated_token_address(
+        let expected_treasury_vault = derive_classic_associated_token_address(
             &ctx.accounts.token_config.key(),
             &ctx.accounts.token_mint.key(),
         );
@@ -529,11 +539,11 @@ pub mod toothfairy_escrow {
         }
         let deposit_index = token_milestone.deposit_count;
 
-        let expected_deposit_vault = get_associated_token_address(
+        let expected_deposit_vault = derive_classic_associated_token_address(
             &ctx.accounts.token_deposit.key(),
             &ctx.accounts.token_mint.key(),
         );
-        let expected_treasury_vault = get_associated_token_address(
+        let expected_treasury_vault = derive_classic_associated_token_address(
             &ctx.accounts.token_config.key(),
             &ctx.accounts.token_mint.key(),
         );
@@ -746,7 +756,7 @@ pub mod toothfairy_escrow {
             deposit.lock_until,
         )?;
 
-        let expected_treasury_vault = get_associated_token_address(
+        let expected_treasury_vault = derive_classic_associated_token_address(
             &ctx.accounts.token_config.key(),
             &ctx.accounts.token_mint.key(),
         );
@@ -2170,5 +2180,23 @@ mod token_v2_tests {
         )
         .is_err());
         assert!(validate_admin_authority_transfer(authority, authority, Pubkey::default()).is_err());
+    }
+
+    #[test]
+    fn derives_the_canonical_classic_usdc_associated_token_address() {
+        let owner: Pubkey = "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq"
+            .parse()
+            .unwrap();
+        let mint: Pubkey = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+            .parse()
+            .unwrap();
+        let expected: Pubkey = "ACwS8669y7JtuwJEEHi45KU5fBftYMpdF1NmFJBiQPJD"
+            .parse()
+            .unwrap();
+
+        assert_eq!(
+            derive_classic_associated_token_address(&owner, &mint),
+            expected,
+        );
     }
 }
