@@ -45,6 +45,33 @@
 - Post-execution Squads vault balance: `1,038,400` lamports.
 - Program status after configuration: paused.
 
+## P2 unpause proposal — created, not executed
+
+- Squads transaction index: `2`.
+- VaultTransaction PDA:
+  `J6Fn7rSGkkY9NbKFEYDjw71kgfsUward1eijmHQPT3c4`.
+- Proposal PDA:
+  `4Qnbns25oegZgKKh24bBH6dumg3rD5Pk65hPLW9oKhyC`.
+- Creation and Signer A approval transaction:
+  `2ra4efgXKDhEgZBjekkxUTTvHKTkLkKyKbRJkMheVsxGxGTnh4x1ZtMWoCkHL1Ed6ykqhPYegshBdfxf1AdiZPfA`.
+- Finalized slot: `436241756`.
+- Exact payer debit: `5,896,341` lamports (`0.005896341 SOL`), within
+  the approved `0.0060 SOL` maximum.
+- Debit components: `2,401,200` lamports VaultTransaction rent,
+  `3,382,560` lamports Proposal rent, `100,000` lamports Squads service
+  account payment, and `12,581` lamports network/priority fee.
+- Decoded inner instruction: TFN `unpause` discriminator
+  `[169, 144, 4, 38, 10, 141, 188, 255]`.
+- Decoded writable accounts: Squads vault
+  `Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko` and TFN config
+  `44USggbuAeHoexpJCjEi3vpB8t61CMZrJhDNdz4ZfJ7X`.
+- Decoded invoked program:
+  `FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC`.
+- Current proposal state: `Active`, approved only by Signer A
+  `5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9`.
+- Signer B approval, execution, and the resulting `paused=false` state are
+  not complete. No canary deposit is authorized by this receipt.
+
 ## Verified custody destination
 
 - Squads V4 multisig:
