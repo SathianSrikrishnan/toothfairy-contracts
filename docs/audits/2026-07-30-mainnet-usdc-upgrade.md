@@ -116,7 +116,8 @@ The following are not complete and must not be represented as live:
    `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` with six decimals.
 4. [Done] Verify all authorities and token configuration while paused.
 5. [Done] Through Squads, unpause for a controlled canary window.
-6. Deposit `0.01 SOL` and verify `0.0002 SOL` fee / `0.0098 SOL` protected.
+6. [Done with cost-control deviation] Deposit `0.01 SOL` and verify
+   `0.0002 SOL` fee / `0.0098 SOL` protected.
 7. [Done with cost-control deviation] Deposit `1.00 USDC` and verify
    `0.02 USDC` fee / `0.98 USDC` protected.
 8. Keep the public application USDC gate off until both receipts and displayed
@@ -156,5 +157,36 @@ approved maximum was `0.0077 SOL`; the finalized payer debit was
 `0.007753440 SOL` account rent plus an `0.000080000 SOL` transaction fee.
 The preview undercounted the variable-length token-deposit account as 176
 bytes instead of the live 211 bytes, and Phantom added compute-budget priority
-instructions. C1 is stopped until signed-message fee verification and the live
-account size are enforced before broadcast.
+instructions. The operator now enforces the signed-message fee and live
+token-deposit size.
+
+## C1 native-SOL Mainnet canary
+
+- Depositor: Signer A
+  `5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9`.
+- Existing founder-controlled milestone:
+  `BV3ALxZwwvzFkMwJztpFMXGAmDhK4kx4RAhY5mBsgVtJ`.
+- Finalized transaction:
+  `44wMPLAWinwKurYxbxc4tFEtvfncjuUK7mtZgUapctwxG1VBtizahWXbXKrNov5Ceeb2EfG692S77n6DJrKFMook`.
+- Finalized slot: `436251177`.
+- Gross source debit to the escrow instruction: exactly `10,000,000`
+  lamports (`0.01 SOL`).
+- TFN treasury credit: exactly `200,000` lamports (`0.0002 SOL`).
+- Protected principal: exactly `9,800,000` lamports (`0.0098 SOL`).
+- Deposit PDA:
+  `GcZeE7aw7WmA33xuZXN14KYJ5SxnzcAw19a4mQ7bb3UQ`.
+- Deposit-account balance: `11,714,000` lamports, comprising `9,800,000`
+  protected lamports and `1,914,000` rent-exempt lamports.
+- Receipt owner: the TFN program.
+- Decoded receipt: milestone above, Signer A depositor, label
+  `TFN Mainnet Canary`, deposit index `2`, immediate lock, unclaimed.
+- Program remains `paused=false`; the public application feature remains off.
+
+The asset/economics canary passed, but its total-debit ceiling did not. The
+approved maximum was `0.0119 SOL`; the finalized Signer A debit was
+`0.011994 SOL`, an overrun of `0.000094 SOL`. The transaction fee was
+`0.00008 SOL`. The preview used a 112-byte deposit-account estimate while the
+live variable-length account is 147 bytes. The local operator now pins the
+observed 147-byte size. This is a process cost-control failure, not a custody,
+authority, recipient, or 2%/98% economics failure. No further Mainnet
+transaction is authorized by this receipt.
