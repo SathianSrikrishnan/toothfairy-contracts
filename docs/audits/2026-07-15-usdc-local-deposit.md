@@ -1,0 +1,38 @@
+# USDC V2 Local Deposit Receipt
+
+## Scope
+
+This receipt covers the additive USDC deposit path only. It did not deploy or modify devnet, mainnet, the production application, or any existing SOL account.
+
+## Proven on an isolated local Solana validator
+
+- A six-decimal allowlisted test mint was configured by the existing program authority.
+- A `1.25 USDC`-equivalent deposit moved `1_250_000` base units from the depositor.
+- The exact two-percent fee, `25_000` units, arrived in the canonical token treasury vault.
+- The net `1_225_000` units arrived in the canonical deposit-specific vault.
+- The token receipt stored the depositor, label, vault, mint, lock timestamp, and net amount.
+- The token-milestone aggregate recorded one deposit and `1_225_000` locked units.
+- A deposit below `0.01 USDC` was rejected and its receipt account was rolled back.
+- A deposit while the global emergency pause was active was rejected.
+- A different six-decimal mint was rejected.
+- A still-locked deposit could not be released normally.
+- An early release moved exactly ten percent to the treasury and ninety percent to the child's token account.
+- The original depositor reclaimed the net amount during the seven-day grace period.
+- An immediately available deposit moved to the child's token account and could not remain in the vault.
+- Token aggregates reconciled total deposited units with total settled units after the lifecycle completed.
+- A non-authority wallet could not withdraw token fees.
+- The configured authority withdrew an exact amount from the canonical token treasury vault.
+
+## Verification commands and results
+
+- Rust safety suite: `13 passing`.
+- Existing SOL account-layout compatibility test: `1 passing`.
+- Repaired SOL local-validator regression suite: `19 passing`.
+- USDC local-validator lifecycle suite: `9 passing`.
+- Anchor program and IDL build: passed.
+
+## Known follow-up gates
+
+- The production-dependency audit currently reports 11 findings (4 high, 7 moderate) in the legacy Anchor/Solana JavaScript toolchain. No automatic breaking downgrade was accepted; the toolchain needs an explicit upgrade or documented containment decision before a release candidate.
+- The local Anchor CLI is `0.32.1` while the program and JavaScript client remain on `0.30.1`; builds pass, but the release process should pin or align the toolchain before deployment.
+- Devnet remains untouched. The next release gate is a devnet-only upgrade, canonical devnet-USDC initialization, one deposit/release receipt, and a post-upgrade regression check before any mainnet decision.
