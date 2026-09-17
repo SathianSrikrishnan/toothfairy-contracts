@@ -1322,7 +1322,8 @@ pub struct InitializeChild<'info> {
 }
 
 /// Create a milestone (cNFTs minted separately via Bubblegum).
-/// V2 CHANGE: PDA seeds updated — no guardian in child_profile seeds.
+/// Existing profiles retain their creation address when the payout wallet changes.
+/// Account validates program ownership/type; has_one binds the current signer.
 #[derive(Accounts)]
 #[instruction(tooth_type: ToothType, metadata_uri: String)]
 pub struct CreateMilestone<'info> {
@@ -1331,9 +1332,7 @@ pub struct CreateMilestone<'info> {
 
     #[account(
         mut,
-        has_one = guardian,
-        seeds = [b"child_profile", child_profile.child_wallet.as_ref()],
-        bump = child_profile.bump
+        has_one = guardian
     )]
     pub child_profile: Account<'info, ChildProfile>,
 
