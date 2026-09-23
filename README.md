@@ -1,8 +1,21 @@
 # Tooth Fairy Network — Solana Escrow Contract
 
-A multi-depositor escrow smart contract for gifting SOL to children, built with Anchor on Solana.
+A multi-depositor escrow program for preserving separate SOL and canonical-USDC gifts with Toothlights.
 
-## Deployed on Mainnet
+## Release status
+
+- **Mainnet program:** the additive SOL + USDC program bytes are deployed and
+  hash-verified. Canonical Circle USDC is configured under the 2-of-3 Squads
+  authority, and the program remains paused pending controlled canaries.
+- **This branch:** SOL and USDC pass one combined 29-test local-validator regression using the pinned Anchor 0.30.1 release toolchain.
+- **Authority migration:** program upgrade, config, and treasury controls are
+  verified under the 2-of-3 Squads vault without changing legacy account
+  layouts.
+- **Not yet public:** USDC remains feature-gated until the verified 2-of-3
+  multisig assumes authority and the SOL + USDC Mainnet canaries pass.
+- **Compatibility rule:** existing `Config`, `ChildProfile`, `Milestone`, `Deposit`, and `Treasury` layouts and SOL instructions remain unchanged.
+
+## Deployed SOL program on Mainnet
 
 | | |
 |---|---|
@@ -11,7 +24,11 @@ A multi-depositor escrow smart contract for gifting SOL to children, built with 
 | **Framework** | Anchor 0.30+ |
 | **Explorer** | [View on Solscan](https://solscan.io/account/FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC) |
 
-## Architecture
+The table identifies the upgraded Mainnet program. Public USDC support still
+requires the remaining canary and application gates
+in [`docs/MAINNET-USDC-RELEASE.md`](docs/MAINNET-USDC-RELEASE.md).
+
+## Legacy SOL architecture overview
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -46,11 +63,12 @@ A multi-depositor escrow smart contract for gifting SOL to children, built with 
 
 ## How It Works
 
-1. **Parent creates a child profile** — Sets guardian, child name, and optional time-lock
-2. **Family & friends deposit SOL** — Multiple depositors can contribute to one child's escrow
-3. **Time-lock protects funds** — Withdrawals blocked until the configured date (e.g., child's 18th birthday)
-4. **Guardian withdraws** — Only the designated guardian can withdraw after the time-lock expires
-5. **Platform fee** — Small fee collected in treasury PDA on deposit
+1. **A parent creates a child profile and milestone.**
+2. **Family and friends may fund that milestone with SOL, and V2 adds canonical USDC as a separate rail.**
+3. **Each deposit receives its own amount, depositor, vault, and opening date.**
+4. **The guardian can release matured funds to the child's wallet.**
+5. **Refund and early-release rules are enforced on-chain.**
+6. **SOL and USDC remain separate balances and separate receipts.**
 
 ## Build & Test
 
@@ -66,8 +84,18 @@ anchor build
 
 ### Test (local validator)
 ```bash
-anchor test
+node tests/account-layout-compatibility.test.mjs
+cargo test -p toothfairy-escrow --lib
+# Installs the known compatible nightly once, then runs the exact combined
+# SOL + USDC lifecycle regression under Anchor CLI 0.30.1.
+bash scripts/install-release-toolchain.sh
+bash scripts/run-release-regression.sh
+npm run test:release-config
+npm run test:compat
 ```
+
+The mainnet sequence and stop conditions are documented in
+[`docs/MAINNET-USDC-RELEASE.md`](docs/MAINNET-USDC-RELEASE.md).
 
 ### Deploy
 ```bash
@@ -86,7 +114,8 @@ anchor deploy
 │       └── src/
 │           └── lib.rs          # Contract source (all 8 instructions)
 ├── tests/
-│   └── toothfairy-escrow.ts    # Integration tests
+│   ├── toothfairy-escrow.ts    # Legacy SOL integration suite; pending repair
+│   └── usdc-escrow-v2.ts       # Focused USDC lifecycle suite
 ├── scripts/                     # Mainnet utility scripts
 ├── Anchor.toml                  # Anchor config
 └── Cargo.toml
@@ -98,6 +127,9 @@ anchor deploy
 - Guardian-only withdrawal authorization
 - Emergency admin controls for edge cases
 - Multi-depositor support with individual deposit tracking
+- Canonical six-decimal mint allowlist; arbitrary tokens are rejected
+- Checked token transfers and checked integer arithmetic
+- Deterministic program-controlled deposit and treasury vaults
 - All secrets loaded from environment variables (see `.env.example`)
 
 ## Part of Tooth Fairy Network

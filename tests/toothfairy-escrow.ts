@@ -18,6 +18,7 @@ describe("toothfairy-escrow", () => {
 
   let childProfilePda: PublicKey;
   let milestonePda0: PublicKey;
+  let configPda: PublicKey;
   let treasuryPda: PublicKey;
 
   before(async () => {
@@ -35,7 +36,7 @@ describe("toothfairy-escrow", () => {
     }
 
     [childProfilePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("child_profile"), guardian.publicKey.toBuffer(), childWallet.publicKey.toBuffer()],
+      [Buffer.from("child_profile"), childWallet.publicKey.toBuffer()],
       program.programId
     );
 
@@ -48,6 +49,27 @@ describe("toothfairy-escrow", () => {
       [Buffer.from("treasury")],
       program.programId
     );
+
+    [configPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("config")],
+      program.programId
+    );
+  });
+
+  // ── 0. Initialize platform config ──
+  it("Initializes the platform config", async () => {
+    await program.methods
+      .initializeConfig()
+      .accounts({
+        authority: guardian.publicKey,
+        config: configPda,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const config = await program.account.config.fetch(configPda);
+    expect(config.authority.toString()).to.equal(guardian.publicKey.toString());
+    expect(config.paused).to.be.false;
   });
 
   // ── 1. Initialize treasury ──
@@ -110,11 +132,11 @@ describe("toothfairy-escrow", () => {
     console.log("  ✓ Milestone created: Upper Right Central Incisor");
   });
 
-  // ── 4. Guardian deposits SOL (immediate) — 1% fee ──
-  it("Guardian deposits SOL with immediate lock (1% fee)", async () => {
+  // ── 4. Guardian deposits SOL (immediate) — 2% fee ──
+  it("Guardian deposits SOL with immediate lock (2% fee)", async () => {
     const depositAmount = 0.5 * LAMPORTS_PER_SOL; // 500,000,000 lamports
-    const expectedFee = Math.floor(depositAmount * 100 / 10000); // 1% = 5,000,000
-    const expectedNet = depositAmount - expectedFee; // 495,000,000
+    const expectedFee = Math.floor(depositAmount * 200 / 10000); // 2% = 10,000,000
+    const expectedNet = depositAmount - expectedFee; // 490,000,000
 
     const [depositPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("deposit"), milestonePda0.toBuffer(), Buffer.from([0, 0, 0, 0])],
@@ -133,6 +155,7 @@ describe("toothfairy-escrow", () => {
         milestone: milestonePda0,
         depositAccount: depositPda,
         treasury: treasuryPda,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -146,13 +169,13 @@ describe("toothfairy-escrow", () => {
     const treasury = await program.account.treasury.fetch(treasuryPda);
     expect(treasury.totalCollected.toNumber()).to.equal(expectedFee);
 
-    console.log(`  ✓ Dad deposited 0.5 SOL → net ${expectedNet / LAMPORTS_PER_SOL} SOL, fee ${expectedFee / LAMPORTS_PER_SOL} SOL (1%)`);
+    console.log(`  ✓ Dad deposited 0.5 SOL → net ${expectedNet / LAMPORTS_PER_SOL} SOL, fee ${expectedFee / LAMPORTS_PER_SOL} SOL (2%)`);
   });
 
   // ── 5. Grandma deposits SOL (3-year lock) ──
   it("Grandma deposits SOL with 3-year lock", async () => {
     const depositAmount = 1 * LAMPORTS_PER_SOL;
-    const expectedFee = Math.floor(depositAmount * 100 / 10000);
+    const expectedFee = Math.floor(depositAmount * 200 / 10000);
     const expectedNet = depositAmount - expectedFee;
 
     const [depositPda] = PublicKey.findProgramAddressSync(
@@ -172,6 +195,7 @@ describe("toothfairy-escrow", () => {
         milestone: milestonePda0,
         depositAccount: depositPda,
         treasury: treasuryPda,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .signers([grandma])
@@ -206,6 +230,7 @@ describe("toothfairy-escrow", () => {
         milestone: milestonePda0,
         depositAccount: depositPda,
         treasury: treasuryPda,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .signers([uncle])
@@ -235,6 +260,7 @@ describe("toothfairy-escrow", () => {
         milestone: milestonePda0,
         depositAccount: depositPda,
         childWallet: childWallet.publicKey,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -263,6 +289,7 @@ describe("toothfairy-escrow", () => {
           milestone: milestonePda0,
           depositAccount: depositPda,
           childWallet: childWallet.publicKey,
+          config: configPda,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -272,8 +299,8 @@ describe("toothfairy-escrow", () => {
     }
   });
 
-  // ── 9. Early withdrawal of Grandma's locked deposit (10% penalty) ──
-  it("Early withdrawal with 10% penalty", async () => {
+  // ── 9. Early release of Grandma's locked deposit (no second fee) ──
+  it("Releases the full protected amount early without a second fee", async () => {
     const [depositPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("deposit"), milestonePda0.toBuffer(), Buffer.from([1, 0, 0, 0])],
       program.programId
@@ -281,8 +308,7 @@ describe("toothfairy-escrow", () => {
 
     const depositBefore = await program.account.deposit.fetch(depositPda);
     const amount = depositBefore.amountLamports.toNumber();
-    const expectedPenalty = Math.floor(amount * 1000 / 10000); // 10%
-    const expectedPayout = amount - expectedPenalty;
+    const expectedPayout = amount;
 
     const childBalanceBefore = await provider.connection.getBalance(childWallet.publicKey);
     const treasuryBefore = await program.account.treasury.fetch(treasuryPda);
@@ -296,6 +322,7 @@ describe("toothfairy-escrow", () => {
         depositAccount: depositPda,
         childWallet: childWallet.publicKey,
         treasury: treasuryPda,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
@@ -306,9 +333,9 @@ describe("toothfairy-escrow", () => {
 
     expect(depositAfter.claimed).to.be.true;
     expect(childBalanceAfter - childBalanceBefore).to.equal(expectedPayout);
-    expect(treasuryAfter.totalCollected.toNumber() - treasuryBefore.totalCollected.toNumber()).to.equal(expectedPenalty);
+    expect(treasuryAfter.totalCollected.toNumber() - treasuryBefore.totalCollected.toNumber()).to.equal(0);
 
-    console.log(`  ✓ Early withdrawal: ${expectedPayout / LAMPORTS_PER_SOL} SOL to child, ${expectedPenalty / LAMPORTS_PER_SOL} SOL penalty to treasury`);
+    console.log(`  ✓ Early release: ${expectedPayout / LAMPORTS_PER_SOL} SOL to child, no second platform fee`);
   });
 
   // ── 10. Prevents double-claim ──
@@ -327,6 +354,7 @@ describe("toothfairy-escrow", () => {
           milestone: milestonePda0,
           depositAccount: depositPda,
           childWallet: childWallet.publicKey,
+          config: configPda,
           systemProgram: SystemProgram.programId,
         })
         .rpc();
@@ -357,6 +385,7 @@ describe("toothfairy-escrow", () => {
           milestone: milestonePda0,
           depositAccount: depositPda,
           treasury: treasuryPda,
+          config: configPda,
           systemProgram: SystemProgram.programId,
         })
         .signers([uncle])
@@ -418,6 +447,7 @@ describe("toothfairy-escrow", () => {
         milestone: milestonePda0,
         depositAccount: depositPda,
         treasury: treasuryPda,
+        config: configPda,
         systemProgram: SystemProgram.programId,
       })
       .signers([uncle])
@@ -459,6 +489,7 @@ describe("toothfairy-escrow", () => {
         guardian: guardian.publicKey,
         childProfile: childProfilePda,
         newGuardian: newGuardian.publicKey,
+        config: configPda,
       })
       .rpc();
 
@@ -473,6 +504,7 @@ describe("toothfairy-escrow", () => {
         guardian: newGuardian.publicKey,
         childProfile: childProfilePda,
         newGuardian: guardian.publicKey,
+        config: configPda,
       })
       .signers([newGuardian])
       .rpc();
@@ -573,6 +605,7 @@ describe("toothfairy-escrow", () => {
           milestone: milestonePda0,
           depositAccount: depositPda,
           childWallet: childWallet.publicKey,
+          config: configPda,
           systemProgram: SystemProgram.programId,
         })
         .signers([uncle])
@@ -581,5 +614,40 @@ describe("toothfairy-escrow", () => {
     } catch (err) {
       console.log("  ✓ Wrong guardian correctly rejected");
     }
+  });
+
+  it("Transfers config and treasury control to a multisig-style authority and back", async () => {
+    const replacement = Keypair.generate();
+
+    await program.methods
+      .transferConfigAuthority(replacement.publicKey)
+      .accounts({ authority: guardian.publicKey, config: configPda })
+      .rpc();
+    expect((await program.account.config.fetch(configPda)).authority.toBase58())
+      .to.equal(replacement.publicKey.toBase58());
+
+    await program.methods
+      .transferConfigAuthority(guardian.publicKey)
+      .accounts({ authority: replacement.publicKey, config: configPda })
+      .signers([replacement])
+      .rpc();
+
+    await program.methods
+      .transferTreasuryAuthority(replacement.publicKey)
+      .accounts({ authority: guardian.publicKey, treasury: treasuryPda })
+      .rpc();
+    expect((await program.account.treasury.fetch(treasuryPda)).authority.toBase58())
+      .to.equal(replacement.publicKey.toBase58());
+
+    await program.methods
+      .transferTreasuryAuthority(guardian.publicKey)
+      .accounts({ authority: replacement.publicKey, treasury: treasuryPda })
+      .signers([replacement])
+      .rpc();
+
+    expect((await program.account.config.fetch(configPda)).authority.toBase58())
+      .to.equal(guardian.publicKey.toBase58());
+    expect((await program.account.treasury.fetch(treasuryPda)).authority.toBase58())
+      .to.equal(guardian.publicKey.toBase58());
   });
 });
