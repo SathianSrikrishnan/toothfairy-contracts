@@ -432,6 +432,23 @@ describe("USDC escrow V2 deposit rail", () => {
     expect(aggregate.totalSettled.toNumber()).to.equal(2_695_000);
   });
 
+  it("hands a prefunded reserve to a new guardian who can withdraw to the updated wallet", async () => {
+    if (!['localhost','127.0.0.1'].includes(new URL(provider.connection.rpcEndpoint).hostname)) throw Error('Local validator only');
+    const nextGuardian=Keypair.generate();
+    await provider.sendAndConfirm(new anchor.web3.Transaction().add(SystemProgram.transfer({fromPubkey:guardian,toPubkey:nextGuardian.publicKey,lamports:10000000})));
+    const destination=(await getOrCreateAssociatedTokenAccount(provider.connection,payer,usdcMint,nextGuardian.publicKey)).address;
+    const accounts=await depositAccounts(3);
+    await program.methods.depositToken(new anchor.BN(1000000),{threeYears:{}},'Reserve').accounts(accounts).rpc();
+    await program.methods.updateChildWallet().accounts({guardian,childProfile:childProfilePda,newChildWallet:nextGuardian.publicKey}).rpc();
+    await program.methods.transferGuardianship().accounts({guardian,childProfile:childProfilePda,newGuardian:nextGuardian.publicKey,config:configPda}).rpc();
+    const withdraw=(who:PublicKey)=>program.methods.earlyWithdrawTokenDeposit().accounts({guardian:who,childProfile:childProfilePda,milestone:milestonePda,config:configPda,tokenConfig:tokenConfigPda,tokenMint:usdcMint,tokenMilestone:tokenMilestonePda,tokenDeposit:accounts.tokenDeposit,depositVault:accounts.depositVault,childTokenAccount:destination,tokenTreasuryVault,tokenProgram:TOKEN_PROGRAM_ID});
+    let denied=false;try{await withdraw(guardian).rpc();}catch{denied=true;}expect(denied).equal(true);
+    await withdraw(nextGuardian.publicKey).signers([nextGuardian]).rpc();
+    expect((await getAccount(provider.connection,destination)).amount.toString()).equal('980000');
+    expect((await getAccount(provider.connection,accounts.depositVault)).amount.toString()).equal('0');
+    expect((await program.account.tokenDeposit.fetch(accounts.tokenDeposit)).state).equal(3);
+  });
+
   it("allows only the configured authority to withdraw collected USDC fees", async () => {
     const outsider = Keypair.generate();
     await provider.sendAndConfirm(
