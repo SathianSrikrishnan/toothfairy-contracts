@@ -179,6 +179,86 @@ fn validate_admin_authority_transfer(
     Ok(())
 }
 
+// ============================================================================
+// ASSET RAILS
+// Additive per-mint allowlist (cbBTC and future SPL assets). The legacy
+// ["token_config"] USDC rail, its accounts and its instructions are untouched.
+// ============================================================================
+
+/// Highest fee an asset rail may charge: the legacy 2.0% platform fee.
+const MAX_ASSET_FEE_BPS: u16 = 200;
+
+/// Classic SPL mints above nine decimals are not supported.
+const MAX_ASSET_DECIMALS: u8 = 9;
+
+fn validate_asset_config_input(
+    mint_decimals: u8,
+    min_deposit_units: u64,
+    fee_bps: u16,
+) -> Result<()> {
+    require!(mint_decimals <= MAX_ASSET_DECIMALS, TfnError::AssetDecimalsUnsupported);
+    require!(min_deposit_units > 0, TfnError::InvalidAssetMinimum);
+    require!(fee_bps <= MAX_ASSET_FEE_BPS, TfnError::AssetFeeTooHigh);
+    Ok(())
+}
+
+fn prepare_asset_deposit(
+    amount_units: u64,
+    lock_period: &LockPeriod,
+    depositor_name: &str,
+    enabled: bool,
+    min_deposit_units: u64,
+    fee_bps: u16,
+    now: i64,
+) -> Result<(u64, u64, i64)> {
+    require!(enabled, TfnError::AssetDisabled);
+    require!(amount_units >= min_deposit_units, TfnError::AssetDepositTooSmall);
+    require!(depositor_name.len() <= 32, TfnError::NameTooLong);
+
+    let (fee_units, net_units) = split_token_amount(amount_units, u64::from(fee_bps))?;
+    require!(net_units > 0, TfnError::NothingToDeposit);
+    let lock_until = token_lock_until(now, lock_period)?;
+    Ok((fee_units, net_units, lock_until))
+}
+
+/// Move escrowed units out of an asset deposit vault, signed by the deposit PDA.
+#[allow(clippy::too_many_arguments)]
+fn release_asset_units<'info>(
+    token_program: &Program<'info, Token>,
+    deposit_vault: &Account<'info, TokenAccount>,
+    token_mint: &Account<'info, TokenMint>,
+    destination: &Account<'info, TokenAccount>,
+    asset_deposit: &Account<'info, TokenDeposit>,
+    amount_units: u64,
+) -> Result<()> {
+    let milestone_key = asset_deposit.milestone;
+    let mint_key = asset_deposit.mint;
+    let deposit_index = asset_deposit.deposit_index.to_le_bytes();
+    let deposit_bump = [asset_deposit.bump];
+    let signer_seeds: &[&[u8]] = &[
+        b"asset_deposit",
+        milestone_key.as_ref(),
+        mint_key.as_ref(),
+        &deposit_index,
+        &deposit_bump,
+    ];
+
+    token::transfer_checked(
+        CpiContext::new_with_signer(
+            token_program.to_account_info(),
+            TransferChecked {
+                from: deposit_vault.to_account_info(),
+                mint: token_mint.to_account_info(),
+                to: destination.to_account_info(),
+                authority: asset_deposit.to_account_info(),
+            },
+            &[signer_seeds],
+        ),
+        amount_units,
+        token_mint.decimals,
+    )
+}
+
 #[program]
 pub mod toothfairy_escrow {
     use super::*;
@@ -805,6 +885,354 @@ pub mod toothfairy_escrow {
         Ok(())
     }
 
+    // ========================================================================
+    // ASSET RAIL INSTRUCTIONS (per-mint allowlist)
+    // ========================================================================
+
+    /// Allowlist one SPL asset with its own minimum and fee. Config authority only.
+    pub fn initialize_asset_config(
+        ctx: Context<InitializeAssetConfig>,
+        min_deposit_units: u64,
+        fee_bps: u16,
+    ) -> Result<()> {
+        validate_asset_config_input(ctx.accounts.token_mint.decimals, min_deposit_units, fee_bps)?;
+
+        let asset_config = &mut ctx.accounts.asset_config;
+        asset_config.mint = ctx.accounts.token_mint.key();
+        asset_config.decimals = ctx.accounts.token_mint.decimals;
+        asset_config.min_deposit_units = min_deposit_units;
+        asset_config.fee_bps = fee_bps;
+        asset_config.enabled = true;
+        asset_config.initialized_at = Clock::get()?.unix_timestamp;
+        asset_config.bump = ctx.bumps.asset_config;
+
+        msg!(
+            "Asset rail configured for mint {} ({} decimals, fee {} bps)",
+            asset_config.mint,
+            asset_config.decimals,
+            fee_bps
+        );
+        Ok(())
+    }
+
+    /// Change an asset's minimum, fee or new-deposit switch. Config authority only.
+    /// Disabling stops new deposits; claims, refunds and early releases keep working.
+    pub fn update_asset_config(
+        ctx: Context<UpdateAssetConfig>,
+        min_deposit_units: u64,
+        fee_bps: u16,
+        enabled: bool,
+    ) -> Result<()> {
+        let asset_config = &mut ctx.accounts.asset_config;
+        validate_asset_config_input(asset_config.decimals, min_deposit_units, fee_bps)?;
+        asset_config.min_deposit_units = min_deposit_units;
+        asset_config.fee_bps = fee_bps;
+        asset_config.enabled = enabled;
+
+        msg!(
+            "Asset rail {} updated: min {} fee {} bps enabled {}",
+            asset_config.mint,
+            min_deposit_units,
+            fee_bps,
+            enabled
+        );
+        Ok(())
+    }
+
+    /// Deposit an allowlisted asset into a deposit-specific vault.
+    /// Aggregates are kept per milestone and per mint, so assets never sum together.
+    pub fn deposit_asset(
+        ctx: Context<MakeAssetDeposit>,
+        amount_units: u64,
+        lock_period: LockPeriod,
+        depositor_name: String,
+    ) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let (fee_units, net_units, lock_until) = prepare_asset_deposit(
+            amount_units,
+            &lock_period,
+            &depositor_name,
+            ctx.accounts.asset_config.enabled,
+            ctx.accounts.asset_config.min_deposit_units,
+            ctx.accounts.asset_config.fee_bps,
+            now,
+        )?;
+
+        let asset_milestone = &mut ctx.accounts.asset_milestone;
+        if asset_milestone.milestone == Pubkey::default() {
+            asset_milestone.milestone = ctx.accounts.milestone.key();
+            asset_milestone.mint = ctx.accounts.token_mint.key();
+            asset_milestone.deposit_count = 0;
+            asset_milestone.total_deposited = 0;
+            asset_milestone.total_settled = 0;
+            asset_milestone.bump = ctx.bumps.asset_milestone;
+        } else {
+            require_keys_eq!(
+                asset_milestone.milestone,
+                ctx.accounts.milestone.key(),
+                TfnError::AssetMilestoneMismatch
+            );
+            require_keys_eq!(
+                asset_milestone.mint,
+                ctx.accounts.token_mint.key(),
+                TfnError::AssetMilestoneMismatch
+            );
+        }
+        let deposit_index = asset_milestone.deposit_count;
+
+        let expected_deposit_vault = derive_classic_associated_token_address(
+            &ctx.accounts.asset_deposit.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        let expected_treasury_vault = derive_classic_associated_token_address(
+            &ctx.accounts.asset_config.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.key(),
+            expected_deposit_vault,
+            TfnError::WrongTokenVault
+        );
+        require_keys_eq!(
+            ctx.accounts.asset_treasury_vault.key(),
+            expected_treasury_vault,
+            TfnError::WrongTokenVault
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.owner,
+            ctx.accounts.asset_deposit.key(),
+            TfnError::WrongTokenAccountOwner
+        );
+        require_keys_eq!(
+            ctx.accounts.asset_treasury_vault.owner,
+            ctx.accounts.asset_config.key(),
+            TfnError::WrongTokenAccountOwner
+        );
+        require_keys_eq!(
+            ctx.accounts.deposit_vault.mint,
+            ctx.accounts.token_mint.key(),
+            TfnError::WrongTokenMint
+        );
+        require_keys_eq!(
+            ctx.accounts.asset_treasury_vault.mint,
+            ctx.accounts.token_mint.key(),
+            TfnError::WrongTokenMint
+        );
+
+        if fee_units > 0 {
+            token::transfer_checked(
+                CpiContext::new(
+                    ctx.accounts.token_program.to_account_info(),
+                    TransferChecked {
+                        from: ctx.accounts.depositor_token_account.to_account_info(),
+                        mint: ctx.accounts.token_mint.to_account_info(),
+                        to: ctx.accounts.asset_treasury_vault.to_account_info(),
+                        authority: ctx.accounts.depositor.to_account_info(),
+                    },
+                ),
+                fee_units,
+                ctx.accounts.token_mint.decimals,
+            )?;
+        }
+
+        token::transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.depositor_token_account.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.deposit_vault.to_account_info(),
+                    authority: ctx.accounts.depositor.to_account_info(),
+                },
+            ),
+            net_units,
+            ctx.accounts.token_mint.decimals,
+        )?;
+
+        let deposit = &mut ctx.accounts.asset_deposit;
+        deposit.milestone = ctx.accounts.milestone.key();
+        deposit.mint = ctx.accounts.token_mint.key();
+        deposit.depositor = ctx.accounts.depositor.key();
+        deposit.depositor_name = depositor_name;
+        deposit.vault = ctx.accounts.deposit_vault.key();
+        deposit.amount_units = net_units;
+        deposit.lock_until = lock_until;
+        deposit.state = TOKEN_DEPOSIT_ACTIVE;
+        deposit.created_at = now;
+        deposit.settled_at = None;
+        deposit.deposit_index = deposit_index;
+        deposit.bump = ctx.bumps.asset_deposit;
+
+        asset_milestone.total_deposited = asset_milestone
+            .total_deposited
+            .checked_add(net_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+        asset_milestone.deposit_count = asset_milestone
+            .deposit_count
+            .checked_add(1)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!(
+            "Asset deposit #{} of mint {}: {} base units net (fee: {}) locked until {}",
+            deposit_index,
+            ctx.accounts.token_mint.key(),
+            net_units,
+            fee_units,
+            lock_until
+        );
+        Ok(())
+    }
+
+    /// Guardian releases a matured asset deposit to the child's token account.
+    pub fn claim_asset_deposit(ctx: Context<ClaimAssetDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.asset_deposit;
+        validate_token_claim(now, deposit.state, deposit.amount_units, deposit.lock_until)?;
+        let amount_units = deposit.amount_units;
+
+        release_asset_units(
+            &ctx.accounts.token_program,
+            &ctx.accounts.deposit_vault,
+            &ctx.accounts.token_mint,
+            &ctx.accounts.child_token_account,
+            &ctx.accounts.asset_deposit,
+            amount_units,
+        )?;
+
+        ctx.accounts.asset_deposit.state = TOKEN_DEPOSIT_CLAIMED;
+        ctx.accounts.asset_deposit.settled_at = Some(now);
+        ctx.accounts.asset_milestone.total_settled = ctx
+            .accounts
+            .asset_milestone
+            .total_settled
+            .checked_add(amount_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!("Asset deposit released: {} base units", amount_units);
+        Ok(())
+    }
+
+    /// Original depositor reclaims the net asset amount during the grace period.
+    pub fn refund_asset_deposit(ctx: Context<RefundAssetDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.asset_deposit;
+        validate_token_refund(
+            now,
+            deposit.state,
+            deposit.created_at,
+            deposit.depositor,
+            ctx.accounts.depositor.key(),
+        )?;
+        let amount_units = deposit.amount_units;
+
+        release_asset_units(
+            &ctx.accounts.token_program,
+            &ctx.accounts.deposit_vault,
+            &ctx.accounts.token_mint,
+            &ctx.accounts.depositor_token_account,
+            &ctx.accounts.asset_deposit,
+            amount_units,
+        )?;
+
+        ctx.accounts.asset_deposit.state = TOKEN_DEPOSIT_REFUNDED;
+        ctx.accounts.asset_deposit.settled_at = Some(now);
+        ctx.accounts.asset_milestone.total_settled = ctx
+            .accounts
+            .asset_milestone
+            .total_settled
+            .checked_add(amount_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!("Asset deposit refunded: {} base units", amount_units);
+        Ok(())
+    }
+
+    /// Guardian releases a still-locked asset deposit early, without a second fee.
+    pub fn early_withdraw_asset_deposit(ctx: Context<EarlyWithdrawAssetDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+
+        let now = Clock::get()?.unix_timestamp;
+        let deposit = &ctx.accounts.asset_deposit;
+        let payout_units = prepare_token_early_withdraw(
+            now,
+            deposit.state,
+            deposit.amount_units,
+            deposit.lock_until,
+        )?;
+
+        release_asset_units(
+            &ctx.accounts.token_program,
+            &ctx.accounts.deposit_vault,
+            &ctx.accounts.token_mint,
+            &ctx.accounts.child_token_account,
+            &ctx.accounts.asset_deposit,
+            payout_units,
+        )?;
+
+        ctx.accounts.asset_deposit.state = TOKEN_DEPOSIT_EARLY_WITHDRAWN;
+        ctx.accounts.asset_deposit.settled_at = Some(now);
+        ctx.accounts.asset_milestone.total_settled = ctx
+            .accounts
+            .asset_milestone
+            .total_settled
+            .checked_add(payout_units)
+            .ok_or(TfnError::ArithmeticOverflow)?;
+
+        msg!("Asset early release: {} to child, no second fee", payout_units);
+        Ok(())
+    }
+
+    /// Withdraw collected fees of one asset to the config authority's token account.
+    pub fn withdraw_asset_treasury(
+        ctx: Context<WithdrawAssetTreasury>,
+        amount_units: u64,
+    ) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+        validate_token_treasury_withdraw(
+            ctx.accounts.authority.key(),
+            ctx.accounts.config.authority,
+            amount_units,
+            ctx.accounts.asset_treasury_vault.amount,
+        )?;
+
+        let expected_treasury_vault = derive_classic_associated_token_address(
+            &ctx.accounts.asset_config.key(),
+            &ctx.accounts.token_mint.key(),
+        );
+        require_keys_eq!(
+            ctx.accounts.asset_treasury_vault.key(),
+            expected_treasury_vault,
+            TfnError::WrongTokenVault
+        );
+
+        let mint_key = ctx.accounts.token_mint.key();
+        let asset_config_bump = [ctx.accounts.asset_config.bump];
+        let signer_seeds: &[&[u8]] = &[b"asset_config", mint_key.as_ref(), &asset_config_bump];
+        token::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.asset_treasury_vault.to_account_info(),
+                    mint: ctx.accounts.token_mint.to_account_info(),
+                    to: ctx.accounts.authority_token_account.to_account_info(),
+                    authority: ctx.accounts.asset_config.to_account_info(),
+                },
+                &[signer_seeds],
+            ),
+            amount_units,
+            ctx.accounts.token_mint.decimals,
+        )?;
+
+        msg!("Withdrew {} base units of {} from asset treasury", amount_units, mint_key);
+        Ok(())
+    }
+
     /// Claim a specific deposit — transfers escrowed SOL to the child's wallet.
     /// Only the guardian can trigger this (parental control).
     /// Respects time-lock: cannot claim before lock_until.
@@ -1147,6 +1575,36 @@ pub struct TokenDeposit {
     pub deposit_index: u32,
     pub bump: u8,
 }
+
+/// One allowlisted SPL asset with its own rules. Its classic ATA is the asset's fee treasury.
+/// PDA: ["asset_config", mint]
+#[account]
+#[derive(InitSpace)]
+pub struct AssetConfig {
+    pub mint: Pubkey,
+    pub decimals: u8,
+    pub min_deposit_units: u64,
+    pub fee_bps: u16,
+    pub enabled: bool,
+    pub initialized_at: i64,
+    pub bump: u8,
+}
+
+/// Per-milestone, per-asset aggregates, so different assets never sum together.
+/// PDA: ["asset_milestone", milestone, mint]
+#[account]
+#[derive(InitSpace)]
+pub struct AssetMilestone {
+    pub milestone: Pubkey,
+    pub mint: Pubkey,
+    pub deposit_count: u32,
+    pub total_deposited: u64,
+    pub total_settled: u64,
+    pub bump: u8,
+}
+
+// Asset deposits reuse the TokenDeposit layout at
+// PDA: ["asset_deposit", milestone, mint, deposit_index]; its ATA is the vault.
 
 // ============================================================================
 // TOOTH TYPES (20 baby teeth)
@@ -1651,6 +2109,321 @@ pub struct EarlyWithdrawTokenDeposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Allowlist one SPL asset. Classic SPL Token mints only (Token-2022 is rejected by type).
+#[derive(Accounts)]
+pub struct InitializeAssetConfig<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = authority.key() == config.authority @ TfnError::NotConfigAuthority,
+    )]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + AssetConfig::INIT_SPACE,
+        seeds = [b"asset_config", token_mint.key().as_ref()],
+        bump,
+    )]
+    pub asset_config: Box<Account<'info, AssetConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateAssetConfig<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = authority.key() == config.authority @ TfnError::NotConfigAuthority,
+    )]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        mut,
+        seeds = [b"asset_config", asset_config.mint.as_ref()],
+        bump = asset_config.bump,
+    )]
+    pub asset_config: Box<Account<'info, AssetConfig>>,
+}
+
+/// Anyone can deposit an allowlisted asset into an existing milestone.
+#[derive(Accounts)]
+pub struct MakeAssetDeposit<'info> {
+    #[account(mut)]
+    pub depositor: Signer<'info>,
+
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"asset_config", token_mint.key().as_ref()],
+        bump = asset_config.bump,
+        constraint = asset_config.mint == token_mint.key() @ TfnError::WrongTokenMint,
+        constraint = asset_config.decimals == token_mint.decimals @ TfnError::AssetDecimalsUnsupported,
+    )]
+    pub asset_config: Box<Account<'info, AssetConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        constraint = depositor_token_account.owner == depositor.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = depositor_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub depositor_token_account: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = depositor,
+        space = 8 + AssetMilestone::INIT_SPACE,
+        seeds = [b"asset_milestone", milestone.key().as_ref(), token_mint.key().as_ref()],
+        bump,
+    )]
+    pub asset_milestone: Box<Account<'info, AssetMilestone>>,
+
+    #[account(
+        init,
+        payer = depositor,
+        space = 8 + TokenDeposit::INIT_SPACE,
+        seeds = [
+            b"asset_deposit",
+            milestone.key().as_ref(),
+            token_mint.key().as_ref(),
+            &asset_milestone.deposit_count.to_le_bytes(),
+        ],
+        bump,
+    )]
+    pub asset_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(mut)]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub asset_treasury_vault: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+/// Guardian releases a matured asset deposit to the child's token account.
+/// Deliberately independent of AssetConfig: disabling an asset never traps funds.
+#[derive(Accounts)]
+pub struct ClaimAssetDeposit<'info> {
+    pub guardian: Signer<'info>,
+
+    #[account(has_one = guardian)]
+    pub child_profile: Box<Account<'info, ChildProfile>>,
+
+    #[account(
+        constraint = milestone.child_profile == child_profile.key() @ TfnError::MilestoneMismatch,
+    )]
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"asset_milestone", milestone.key().as_ref(), token_mint.key().as_ref()],
+        bump = asset_milestone.bump,
+        constraint = asset_milestone.milestone == milestone.key() @ TfnError::AssetMilestoneMismatch,
+        constraint = asset_milestone.mint == token_mint.key() @ TfnError::AssetMilestoneMismatch,
+    )]
+    pub asset_milestone: Box<Account<'info, AssetMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"asset_deposit",
+            milestone.key().as_ref(),
+            token_mint.key().as_ref(),
+            &asset_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = asset_deposit.bump,
+        constraint = asset_deposit.milestone == milestone.key() @ TfnError::DepositMismatch,
+        constraint = asset_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub asset_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == asset_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == asset_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = child_token_account.owner == child_profile.child_wallet @ TfnError::WrongChildWallet,
+        constraint = child_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub child_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Original depositor reclaims the net asset amount during the grace period.
+#[derive(Accounts)]
+pub struct RefundAssetDeposit<'info> {
+    pub depositor: Signer<'info>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"asset_milestone", asset_deposit.milestone.as_ref(), token_mint.key().as_ref()],
+        bump = asset_milestone.bump,
+        constraint = asset_milestone.milestone == asset_deposit.milestone @ TfnError::AssetMilestoneMismatch,
+        constraint = asset_milestone.mint == token_mint.key() @ TfnError::AssetMilestoneMismatch,
+    )]
+    pub asset_milestone: Box<Account<'info, AssetMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"asset_deposit",
+            asset_deposit.milestone.as_ref(),
+            token_mint.key().as_ref(),
+            &asset_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = asset_deposit.bump,
+        constraint = asset_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+        constraint = asset_deposit.depositor == depositor.key() @ TfnError::NotOriginalDepositor,
+    )]
+    pub asset_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == asset_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == asset_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = depositor_token_account.owner == depositor.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = depositor_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub depositor_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Guardian releases a still-locked asset deposit without a second fee.
+#[derive(Accounts)]
+pub struct EarlyWithdrawAssetDeposit<'info> {
+    pub guardian: Signer<'info>,
+
+    #[account(has_one = guardian)]
+    pub child_profile: Box<Account<'info, ChildProfile>>,
+
+    #[account(
+        constraint = milestone.child_profile == child_profile.key() @ TfnError::MilestoneMismatch,
+    )]
+    pub milestone: Box<Account<'info, Milestone>>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        seeds = [b"asset_milestone", milestone.key().as_ref(), token_mint.key().as_ref()],
+        bump = asset_milestone.bump,
+        constraint = asset_milestone.milestone == milestone.key() @ TfnError::AssetMilestoneMismatch,
+        constraint = asset_milestone.mint == token_mint.key() @ TfnError::AssetMilestoneMismatch,
+    )]
+    pub asset_milestone: Box<Account<'info, AssetMilestone>>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"asset_deposit",
+            milestone.key().as_ref(),
+            token_mint.key().as_ref(),
+            &asset_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = asset_deposit.bump,
+        constraint = asset_deposit.milestone == milestone.key() @ TfnError::DepositMismatch,
+        constraint = asset_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub asset_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == asset_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == asset_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = child_token_account.owner == child_profile.child_wallet @ TfnError::WrongChildWallet,
+        constraint = child_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub child_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+/// Config authority withdraws one asset's accumulated fees.
+#[derive(Accounts)]
+pub struct WithdrawAssetTreasury<'info> {
+    pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"config"],
+        bump = config.bump,
+        constraint = config.authority == authority.key() @ TfnError::NotConfigAuthority,
+    )]
+    pub config: Box<Account<'info, Config>>,
+
+    #[account(
+        seeds = [b"asset_config", token_mint.key().as_ref()],
+        bump = asset_config.bump,
+        constraint = asset_config.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub asset_config: Box<Account<'info, AssetConfig>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        constraint = asset_treasury_vault.owner == asset_config.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = asset_treasury_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub asset_treasury_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = authority_token_account.owner == authority.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = authority_token_account.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub authority_token_account: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
 /// Only the guardian can claim a deposit — sends SOL to child's wallet.
 /// Enforces time-lock: deposit.lock_until must be in the past.
 #[derive(Accounts)]
@@ -1995,6 +2768,19 @@ pub enum TfnError {
     UnauthorizedAuthorityTransfer,
     #[msg("The new admin authority cannot be the system default address")]
     InvalidNewAuthority,
+    // Asset rail errors. Append only: existing error codes must never shift.
+    #[msg("Asset mint decimals are unsupported or do not match the asset rail")]
+    AssetDecimalsUnsupported,
+    #[msg("Asset minimum deposit must be greater than zero")]
+    InvalidAssetMinimum,
+    #[msg("Asset fee cannot exceed 200 basis points")]
+    AssetFeeTooHigh,
+    #[msg("New deposits of this asset are switched off")]
+    AssetDisabled,
+    #[msg("Deposit is below this asset's minimum")]
+    AssetDepositTooSmall,
+    #[msg("Asset aggregate does not belong to this milestone and mint")]
+    AssetMilestoneMismatch,
 }
 
 #[cfg(test)]
@@ -2197,5 +2983,66 @@ mod token_v2_tests {
             derive_classic_associated_token_address(&owner, &mint),
             expected,
         );
+    }
+}
+
+#[cfg(test)]
+mod asset_rail_tests {
+    use super::*;
+
+    const NOW: i64 = 1_800_000_000;
+
+    #[test]
+    fn accepts_eight_decimal_bitcoin_style_assets_up_to_nine_decimals() {
+        assert!(validate_asset_config_input(8, 1_000, 200).is_ok());
+        assert!(validate_asset_config_input(6, 10_000, 0).is_ok());
+        assert!(validate_asset_config_input(9, 1, 0).is_ok());
+        assert!(validate_asset_config_input(10, 1_000, 0).is_err());
+    }
+
+    #[test]
+    fn rejects_zero_minimums_and_fees_above_two_percent() {
+        assert!(validate_asset_config_input(8, 0, 0).is_err());
+        assert!(validate_asset_config_input(8, 1_000, 201).is_err());
+    }
+
+    #[test]
+    fn applies_the_per_asset_fee_and_lock() {
+        // $10 of cbBTC at ~$84k is ~11,911 sats; 2% fee = 238 sats.
+        assert_eq!(
+            prepare_asset_deposit(11_911, &LockPeriod::FiveYears, "Aunt", true, 1_000, 200, NOW)
+                .unwrap(),
+            (238, 11_673, NOW + 5 * SECONDS_PER_YEAR),
+        );
+        assert_eq!(
+            prepare_asset_deposit(11_911, &LockPeriod::Immediate, "Aunt", true, 1_000, 0, NOW)
+                .unwrap(),
+            (0, 11_911, 0),
+        );
+    }
+
+    #[test]
+    fn refuses_disabled_assets_small_deposits_and_long_names() {
+        assert!(prepare_asset_deposit(11_911, &LockPeriod::Immediate, "Aunt", false, 1_000, 0, NOW)
+            .is_err());
+        assert!(prepare_asset_deposit(999, &LockPeriod::Immediate, "Aunt", true, 1_000, 0, NOW)
+            .is_err());
+        assert!(prepare_asset_deposit(
+            11_911,
+            &LockPeriod::Immediate,
+            &"x".repeat(33),
+            true,
+            1_000,
+            0,
+            NOW,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn keeps_the_legacy_usdc_rail_constants_unchanged() {
+        assert_eq!(PLATFORM_FEE_BPS, 200);
+        assert_eq!(MIN_TOKEN_DEPOSIT_UNITS, 10_000);
+        assert_eq!(u64::from(MAX_ASSET_FEE_BPS), PLATFORM_FEE_BPS);
     }
 }

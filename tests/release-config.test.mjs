@@ -65,8 +65,11 @@ test('release artifact stays within the audited classic-SPL size budget', async 
   );
   const { size } = await stat(artifact);
 
+  // Asset rails (Sept 25) grew the artifact from ~437 KB to ~537 KB. Mainnet
+  // ProgramData holds 437,813 bytes, so this release needs a program extend of
+  // about 99 KB (~0.69 SOL permanent rent) before the Squads upgrade.
   assert.ok(
-    size <= 450_000,
-    `release artifact is ${size} bytes; expected no more than 450000`,
+    size <= 545_000,
+    `release artifact is ${size} bytes; expected no more than 545000`,
   );
 });

@@ -1,0 +1,3521 @@
+{
+  "address": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "metadata": {
+    "name": "toothfairy_escrow",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Tooth Fairy Network — Soulbound NFT milestones with escrow deposits on Solana"
+  },
+  "instructions": [
+    {
+      "name": "claim_asset_deposit",
+      "docs": [
+        "Guardian releases a matured asset deposit to the child's token account."
+      ],
+      "discriminator": [
+        133,
+        186,
+        175,
+        87,
+        123,
+        122,
+        220,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile"
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "asset_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              },
+              {
+                "kind": "account",
+                "path": "asset_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "child_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_deposit",
+      "docs": [
+        "Claim a specific deposit — transfers escrowed SOL to the child's wallet.",
+        "Only the guardian can trigger this (parental control).",
+        "Respects time-lock: cannot claim before lock_until."
+      ],
+      "discriminator": [
+        201,
+        106,
+        1,
+        224,
+        122,
+        144,
+        210,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "deposit_account",
+          "writable": true
+        },
+        {
+          "name": "child_wallet",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config — checked for pause state"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_token_deposit",
+      "docs": [
+        "Release a matured USDC deposit to the child's token account."
+      ],
+      "discriminator": [
+        237,
+        204,
+        146,
+        231,
+        137,
+        12,
+        197,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile"
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "child_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_deposit",
+      "docs": [
+        "Close a deposit account and reclaim rent.",
+        "Only callable after the deposit has been claimed or refunded (amount_lamports == 0).",
+        "Rent is returned to the guardian's wallet."
+      ],
+      "discriminator": [
+        200,
+        19,
+        254,
+        192,
+        15,
+        110,
+        209,
+        179
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile"
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "deposit_account",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_milestone",
+      "docs": [
+        "Close a milestone account and reclaim rent.",
+        "Only the guardian can call this. All deposits for this milestone must be claimed or refunded.",
+        "Rent is returned to the guardian's wallet."
+      ],
+      "discriminator": [
+        64,
+        73,
+        247,
+        200,
+        45,
+        76,
+        197,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_profile",
+      "docs": [
+        "Close a child profile and reclaim rent.",
+        "Only the guardian can call this. All milestones must be closed first.",
+        "Rent is returned to the guardian's wallet."
+      ],
+      "discriminator": [
+        167,
+        36,
+        181,
+        8,
+        136,
+        158,
+        46,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_milestone",
+      "docs": [
+        "Create a milestone record for a tooth.",
+        "The keepsake cNFT is minted separately via Bubblegum.",
+        "Only the guardian can call this."
+      ],
+      "discriminator": [
+        239,
+        58,
+        201,
+        28,
+        40,
+        186,
+        173,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "tooth_type",
+          "type": {
+            "defined": {
+              "name": "ToothType"
+            }
+          }
+        },
+        {
+          "name": "metadata_uri",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "docs": [
+        "Deposit SOL into an existing milestone's escrow.",
+        "ANYONE can call this — parents, grandparents, uncles, friends.",
+        "Each deposit is tracked as a separate Deposit account.",
+        "A 2% platform fee is deducted and sent to the treasury."
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone",
+          "writable": true
+        },
+        {
+          "name": "deposit_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "milestone.deposit_count",
+                "account": "Milestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury",
+          "docs": [
+            "Platform treasury — receives the 2% fee"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config — checked for pause state"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "lock_period",
+          "type": {
+            "defined": {
+              "name": "LockPeriod"
+            }
+          }
+        },
+        {
+          "name": "depositor_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "deposit_asset",
+      "docs": [
+        "Deposit an allowlisted asset into a deposit-specific vault.",
+        "Aggregates are kept per milestone and per mint, so assets never sum together."
+      ],
+      "discriminator": [
+        107,
+        93,
+        89,
+        87,
+        226,
+        203,
+        154,
+        19
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "depositor_token_account",
+          "writable": true
+        },
+        {
+          "name": "asset_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              },
+              {
+                "kind": "account",
+                "path": "asset_milestone.deposit_count",
+                "account": "AssetMilestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "asset_treasury_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_units",
+          "type": "u64"
+        },
+        {
+          "name": "lock_period",
+          "type": {
+            "defined": {
+              "name": "LockPeriod"
+            }
+          }
+        },
+        {
+          "name": "depositor_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "deposit_token",
+      "docs": [
+        "Deposit canonical USDC into a deposit-specific token vault.",
+        "The fee and net amount remain independently verifiable token balances."
+      ],
+      "discriminator": [
+        11,
+        156,
+        96,
+        218,
+        39,
+        163,
+        180,
+        19
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "depositor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_milestone.deposit_count",
+                "account": "TokenMilestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "token_treasury_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_units",
+          "type": "u64"
+        },
+        {
+          "name": "lock_period",
+          "type": {
+            "defined": {
+              "name": "LockPeriod"
+            }
+          }
+        },
+        {
+          "name": "depositor_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "early_withdraw",
+      "docs": [
+        "Early withdrawal — guardian can withdraw a time-locked deposit before maturity.",
+        "The full protected amount goes to the child wallet; no second platform fee is charged."
+      ],
+      "discriminator": [
+        19,
+        147,
+        103,
+        62,
+        98,
+        55,
+        65,
+        249
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "deposit_account",
+          "writable": true
+        },
+        {
+          "name": "child_wallet",
+          "writable": true
+        },
+        {
+          "name": "treasury",
+          "docs": [
+            "Platform treasury retained for instruction compatibility; no early-release fee is collected."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config — checked for pause state"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "early_withdraw_asset_deposit",
+      "docs": [
+        "Guardian releases a still-locked asset deposit early, without a second fee."
+      ],
+      "discriminator": [
+        152,
+        27,
+        157,
+        58,
+        92,
+        122,
+        25,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile"
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "asset_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              },
+              {
+                "kind": "account",
+                "path": "asset_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "child_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "early_withdraw_token_deposit",
+      "docs": [
+        "Release a still-locked USDC deposit early without charging a second platform fee."
+      ],
+      "discriminator": [
+        169,
+        102,
+        114,
+        232,
+        225,
+        178,
+        137,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "signer": true,
+          "relations": [
+            "child_profile"
+          ]
+        },
+        {
+          "name": "child_profile"
+        },
+        {
+          "name": "milestone"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "milestone"
+              },
+              {
+                "kind": "account",
+                "path": "token_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "child_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_treasury_vault",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "get_milestones",
+      "docs": [
+        "Get all milestones for a child (read-only — clients use getProgramAccounts)."
+      ],
+      "discriminator": [
+        165,
+        160,
+        57,
+        38,
+        83,
+        149,
+        71,
+        26
+      ],
+      "accounts": [
+        {
+          "name": "child_profile"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_asset_config",
+      "docs": [
+        "Allowlist one SPL asset with its own minimum and fee. Config authority only."
+      ],
+      "discriminator": [
+        201,
+        180,
+        166,
+        88,
+        111,
+        8,
+        150,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "min_deposit_units",
+          "type": "u64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_child",
+      "docs": [
+        "Initialize a new child profile that tracks milestones.",
+        "Called once per child by the parent (guardian).",
+        "",
+        "V2 CHANGE: PDA seeded by child_wallet only (not guardian).",
+        "This allows guardianship transfer without breaking PDA derivation."
+      ],
+      "discriminator": [
+        247,
+        62,
+        145,
+        15,
+        249,
+        58,
+        239,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_wallet"
+        },
+        {
+          "name": "child_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  104,
+                  105,
+                  108,
+                  100,
+                  95,
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "child_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "child_name",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "docs": [
+        "Initialize the global config. Called once by the platform admin."
+      ],
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_token_config",
+      "docs": [
+        "Configure the one allowlisted six-decimal stablecoin mint for this cluster.",
+        "This is additive and does not alter any existing SOL account."
+      ],
+      "discriminator": [
+        60,
+        14,
+        114,
+        86,
+        25,
+        84,
+        93,
+        149
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_treasury",
+      "docs": [
+        "Initialize the platform treasury. Called once by the platform admin."
+      ],
+      "discriminator": [
+        124,
+        186,
+        211,
+        195,
+        85,
+        165,
+        129,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pause",
+      "docs": [
+        "Pause the contract — blocks deposits, claims, withdrawals, and transfers.",
+        "Only the config authority can call this."
+      ],
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_asset_deposit",
+      "docs": [
+        "Original depositor reclaims the net asset amount during the grace period."
+      ],
+      "discriminator": [
+        107,
+        165,
+        19,
+        219,
+        248,
+        112,
+        33,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "asset_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset_deposit.milestone",
+                "account": "TokenDeposit"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset_deposit.milestone",
+                "account": "TokenDeposit"
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              },
+              {
+                "kind": "account",
+                "path": "asset_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "depositor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_deposit",
+      "docs": [
+        "Refund a deposit back to the original depositor.",
+        "Only the ORIGINAL DEPOSITOR can call this.",
+        "Only works within the 7-day grace period after deposit.",
+        "Cannot refund if already claimed."
+      ],
+      "discriminator": [
+        19,
+        19,
+        78,
+        50,
+        187,
+        10,
+        162,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "milestone",
+          "writable": true
+        },
+        {
+          "name": "deposit_account",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "refund_token_deposit",
+      "docs": [
+        "Return a USDC deposit to its original depositor during the grace period."
+      ],
+      "discriminator": [
+        87,
+        11,
+        91,
+        142,
+        83,
+        60,
+        49,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "depositor",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_milestone",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  105,
+                  108,
+                  101,
+                  115,
+                  116,
+                  111,
+                  110,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_deposit.milestone",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_deposit",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  100,
+                  101,
+                  112,
+                  111,
+                  115,
+                  105,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_deposit.milestone",
+                "account": "TokenDeposit"
+              },
+              {
+                "kind": "account",
+                "path": "token_deposit.deposit_index",
+                "account": "TokenDeposit"
+              }
+            ]
+          }
+        },
+        {
+          "name": "deposit_vault",
+          "writable": true
+        },
+        {
+          "name": "depositor_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transfer_config_authority",
+      "docs": [
+        "Transfer emergency/config control to a new authority, such as a multisig vault."
+      ],
+      "discriminator": [
+        105,
+        153,
+        105,
+        110,
+        203,
+        141,
+        163,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "transfer_guardianship",
+      "docs": [
+        "Transfer guardianship of a child profile to a new wallet.",
+        "Only the current guardian can call this."
+      ],
+      "discriminator": [
+        24,
+        81,
+        213,
+        47,
+        120,
+        56,
+        138,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "new_guardian"
+        },
+        {
+          "name": "config",
+          "docs": [
+            "Global config — checked for pause state"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transfer_treasury_authority",
+      "docs": [
+        "Transfer SOL-fee treasury control to a new authority, such as a multisig vault."
+      ],
+      "discriminator": [
+        35,
+        180,
+        94,
+        3,
+        110,
+        218,
+        121,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "docs": [
+        "Unpause the contract — resumes normal operation.",
+        "Only the config authority can call this."
+      ],
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_asset_config",
+      "docs": [
+        "Change an asset's minimum, fee or new-deposit switch. Config authority only.",
+        "Disabling stops new deposits; claims, refunds and early releases keep working."
+      ],
+      "discriminator": [
+        104,
+        102,
+        158,
+        165,
+        28,
+        229,
+        131,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "asset_config.mint",
+                "account": "AssetConfig"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "min_deposit_units",
+          "type": "u64"
+        },
+        {
+          "name": "fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "enabled",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "update_child_wallet",
+      "docs": [
+        "Update the child's destination wallet.",
+        "Only the guardian can call this."
+      ],
+      "discriminator": [
+        185,
+        81,
+        2,
+        160,
+        180,
+        90,
+        182,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "guardian",
+          "signer": true
+        },
+        {
+          "name": "child_profile",
+          "writable": true
+        },
+        {
+          "name": "new_child_wallet"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw_asset_treasury",
+      "docs": [
+        "Withdraw collected fees of one asset to the config authority's token account."
+      ],
+      "discriminator": [
+        82,
+        155,
+        43,
+        181,
+        250,
+        236,
+        53,
+        200
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "asset_treasury_vault",
+          "writable": true
+        },
+        {
+          "name": "authority_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_units",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_token_treasury",
+      "docs": [
+        "Withdraw collected USDC fees to the configured authority's token account."
+      ],
+      "discriminator": [
+        51,
+        250,
+        225,
+        15,
+        47,
+        68,
+        97,
+        186
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_mint"
+        },
+        {
+          "name": "token_treasury_vault",
+          "writable": true
+        },
+        {
+          "name": "authority_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_units",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_treasury",
+      "docs": [
+        "Withdraw accumulated fees from the treasury.",
+        "Only the treasury authority can call this."
+      ],
+      "discriminator": [
+        40,
+        63,
+        122,
+        158,
+        144,
+        216,
+        83,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "treasury",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "amount_lamports",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AssetConfig",
+      "discriminator": [
+        57,
+        112,
+        247,
+        166,
+        247,
+        64,
+        140,
+        23
+      ]
+    },
+    {
+      "name": "AssetMilestone",
+      "discriminator": [
+        247,
+        201,
+        194,
+        249,
+        69,
+        19,
+        187,
+        67
+      ]
+    },
+    {
+      "name": "ChildProfile",
+      "discriminator": [
+        168,
+        83,
+        135,
+        85,
+        134,
+        176,
+        213,
+        191
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Deposit",
+      "discriminator": [
+        148,
+        146,
+        121,
+        66,
+        207,
+        173,
+        21,
+        227
+      ]
+    },
+    {
+      "name": "Milestone",
+      "discriminator": [
+        38,
+        210,
+        239,
+        177,
+        85,
+        184,
+        10,
+        44
+      ]
+    },
+    {
+      "name": "TokenConfig",
+      "discriminator": [
+        92,
+        73,
+        255,
+        43,
+        107,
+        51,
+        117,
+        101
+      ]
+    },
+    {
+      "name": "TokenDeposit",
+      "discriminator": [
+        95,
+        146,
+        180,
+        160,
+        106,
+        46,
+        185,
+        56
+      ]
+    },
+    {
+      "name": "TokenMilestone",
+      "discriminator": [
+        214,
+        116,
+        143,
+        110,
+        108,
+        37,
+        109,
+        150
+      ]
+    },
+    {
+      "name": "Treasury",
+      "discriminator": [
+        238,
+        239,
+        123,
+        238,
+        89,
+        1,
+        168,
+        253
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NameTooLong",
+      "msg": "Child name must be 32 characters or fewer"
+    },
+    {
+      "code": 6001,
+      "name": "MaxMilestonesReached",
+      "msg": "Maximum of 20 milestones per child"
+    },
+    {
+      "code": 6002,
+      "name": "AlreadyClaimed",
+      "msg": "This milestone has already been claimed"
+    },
+    {
+      "code": 6003,
+      "name": "NothingToClaim",
+      "msg": "No deposit to claim"
+    },
+    {
+      "code": 6004,
+      "name": "WrongChildWallet",
+      "msg": "Child wallet does not match profile"
+    },
+    {
+      "code": 6005,
+      "name": "DuplicateToothType",
+      "msg": "This tooth type has already been recorded"
+    },
+    {
+      "code": 6006,
+      "name": "NothingToDeposit",
+      "msg": "Deposit amount must be greater than zero"
+    },
+    {
+      "code": 6007,
+      "name": "DepositStillLocked",
+      "msg": "This deposit is still time-locked"
+    },
+    {
+      "code": 6008,
+      "name": "MilestoneMismatch",
+      "msg": "Milestone does not belong to this child profile"
+    },
+    {
+      "code": 6009,
+      "name": "DepositMismatch",
+      "msg": "Deposit does not belong to this milestone"
+    },
+    {
+      "code": 6010,
+      "name": "DepositTooSmall",
+      "msg": "Deposit must be at least 10,000 lamports (0.00001 SOL)"
+    },
+    {
+      "code": 6011,
+      "name": "RefundPeriodExpired",
+      "msg": "Refund period has expired (7 days from deposit)"
+    },
+    {
+      "code": 6012,
+      "name": "NotOriginalDepositor",
+      "msg": "Only the original depositor can request a refund"
+    },
+    {
+      "code": 6013,
+      "name": "NotGuardian",
+      "msg": "Only the guardian can perform this action"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidLockTimestamp",
+      "msg": "Lock timestamp must be in the future"
+    },
+    {
+      "code": 6015,
+      "name": "InsufficientTreasuryBalance",
+      "msg": "Insufficient treasury balance for withdrawal"
+    },
+    {
+      "code": 6016,
+      "name": "NotTreasuryAuthority",
+      "msg": "Only the treasury authority can perform this action"
+    },
+    {
+      "code": 6017,
+      "name": "DepositNotLocked",
+      "msg": "Deposit is not time-locked or has already matured — use claim_deposit instead"
+    },
+    {
+      "code": 6018,
+      "name": "ProfileHasActiveDeposits",
+      "msg": "Profile has active deposits — claim or refund all deposits before closing"
+    },
+    {
+      "code": 6019,
+      "name": "MilestoneHasActiveDeposits",
+      "msg": "Milestone has active deposits — claim or refund all before closing"
+    },
+    {
+      "code": 6020,
+      "name": "DepositStillActive",
+      "msg": "Deposit is still active — must be claimed or refunded before closing"
+    },
+    {
+      "code": 6021,
+      "name": "ContractPaused",
+      "msg": "Contract is paused — no operations allowed"
+    },
+    {
+      "code": 6022,
+      "name": "NotConfigAuthority",
+      "msg": "Only the config authority can perform this action"
+    },
+    {
+      "code": 6023,
+      "name": "TokenDepositTooSmall",
+      "msg": "Token deposit must be at least 0.01 USDC"
+    },
+    {
+      "code": 6024,
+      "name": "ArithmeticOverflow",
+      "msg": "Token amount arithmetic overflowed"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidTokenDecimals",
+      "msg": "The allowlisted stablecoin mint must use six decimals"
+    },
+    {
+      "code": 6026,
+      "name": "WrongTokenMint",
+      "msg": "Only the allowlisted canonical USDC mint is accepted"
+    },
+    {
+      "code": 6027,
+      "name": "WrongTokenAccountOwner",
+      "msg": "The source token account must belong to the depositor"
+    },
+    {
+      "code": 6028,
+      "name": "TokenMilestoneMismatch",
+      "msg": "Token aggregate does not belong to this milestone"
+    },
+    {
+      "code": 6029,
+      "name": "WrongTokenVault",
+      "msg": "Token vault is not the canonical associated account for this deposit"
+    },
+    {
+      "code": 6030,
+      "name": "NothingToWithdraw",
+      "msg": "Withdrawal amount must be greater than zero"
+    },
+    {
+      "code": 6031,
+      "name": "InsufficientTokenTreasuryBalance",
+      "msg": "Token treasury does not have enough available units"
+    },
+    {
+      "code": 6032,
+      "name": "UnauthorizedAuthorityTransfer",
+      "msg": "Only the current admin authority can transfer control"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidNewAuthority",
+      "msg": "The new admin authority cannot be the system default address"
+    },
+    {
+      "code": 6034,
+      "name": "AssetDecimalsUnsupported",
+      "msg": "Asset mint decimals are unsupported or do not match the asset rail"
+    },
+    {
+      "code": 6035,
+      "name": "InvalidAssetMinimum",
+      "msg": "Asset minimum deposit must be greater than zero"
+    },
+    {
+      "code": 6036,
+      "name": "AssetFeeTooHigh",
+      "msg": "Asset fee cannot exceed 200 basis points"
+    },
+    {
+      "code": 6037,
+      "name": "AssetDisabled",
+      "msg": "New deposits of this asset are switched off"
+    },
+    {
+      "code": 6038,
+      "name": "AssetDepositTooSmall",
+      "msg": "Deposit is below this asset's minimum"
+    },
+    {
+      "code": 6039,
+      "name": "AssetMilestoneMismatch",
+      "msg": "Asset aggregate does not belong to this milestone and mint"
+    }
+  ],
+  "types": [
+    {
+      "name": "AssetConfig",
+      "docs": [
+        "One allowlisted SPL asset with its own rules. Its classic ATA is the asset's fee treasury.",
+        "PDA: [\"asset_config\", mint]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "min_deposit_units",
+            "type": "u64"
+          },
+          {
+            "name": "fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "initialized_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AssetMilestone",
+      "docs": [
+        "Per-milestone, per-asset aggregates, so different assets never sum together.",
+        "PDA: [\"asset_milestone\", milestone, mint]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "milestone",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u32"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_settled",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChildProfile",
+      "docs": [
+        "Child profile — tracks milestones and deposits for one child.",
+        "V2 CHANGE: PDA seeded by child_wallet only (not guardian).",
+        "PDA: [\"child_profile\", child_wallet]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "guardian",
+            "type": "pubkey"
+          },
+          {
+            "name": "child_wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "child_name",
+            "type": "string"
+          },
+          {
+            "name": "milestone_count",
+            "type": "u8"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "docs": [
+        "Global config — emergency pause and platform settings.",
+        "PDA: [\"config\"] (global singleton)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Deposit",
+      "docs": [
+        "Individual deposit — one per depositor per milestone.",
+        "The deposit PDA itself holds the escrowed SOL."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "milestone",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor_name",
+            "type": "string"
+          },
+          {
+            "name": "amount_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "lock_until",
+            "type": "i64"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "claimed_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "deposit_index",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LockPeriod",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Immediate"
+          },
+          {
+            "name": "ThreeYears"
+          },
+          {
+            "name": "FiveYears"
+          },
+          {
+            "name": "SevenYears"
+          },
+          {
+            "name": "TenYears"
+          },
+          {
+            "name": "FifteenYears"
+          },
+          {
+            "name": "UntilTimestamp",
+            "fields": [
+              {
+                "name": "lock_until",
+                "type": "i64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Milestone",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "child_profile",
+            "type": "pubkey"
+          },
+          {
+            "name": "tooth_type",
+            "type": {
+              "defined": {
+                "name": "ToothType"
+              }
+            }
+          },
+          {
+            "name": "metadata_uri",
+            "type": "string"
+          },
+          {
+            "name": "deposit_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "total_deposits",
+            "type": "u64"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u32"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "claimed_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "milestone_index",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenConfig",
+      "docs": [
+        "Cluster-specific allowlist for the one accepted stablecoin mint.",
+        "PDA: [\"token_config\"]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "initialized_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenDeposit",
+      "docs": [
+        "One allowlisted-token deposit. Its ATA is the token vault.",
+        "PDA: [\"token_deposit\", milestone, deposit_index]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "milestone",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "depositor_name",
+            "type": "string"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_units",
+            "type": "u64"
+          },
+          {
+            "name": "lock_until",
+            "type": "i64"
+          },
+          {
+            "name": "state",
+            "type": "u8"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "settled_at",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "deposit_index",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMilestone",
+      "docs": [
+        "Token aggregates kept separate from the deployed Milestone layout.",
+        "PDA: [\"token_milestone\", milestone]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "milestone",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit_count",
+            "type": "u32"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_settled",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ToothType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "UpperRightCentralIncisor"
+          },
+          {
+            "name": "UpperLeftCentralIncisor"
+          },
+          {
+            "name": "LowerRightCentralIncisor"
+          },
+          {
+            "name": "LowerLeftCentralIncisor"
+          },
+          {
+            "name": "UpperRightLateralIncisor"
+          },
+          {
+            "name": "UpperLeftLateralIncisor"
+          },
+          {
+            "name": "LowerRightLateralIncisor"
+          },
+          {
+            "name": "LowerLeftLateralIncisor"
+          },
+          {
+            "name": "UpperRightCanine"
+          },
+          {
+            "name": "UpperLeftCanine"
+          },
+          {
+            "name": "LowerRightCanine"
+          },
+          {
+            "name": "LowerLeftCanine"
+          },
+          {
+            "name": "UpperRightFirstMolar"
+          },
+          {
+            "name": "UpperLeftFirstMolar"
+          },
+          {
+            "name": "LowerRightFirstMolar"
+          },
+          {
+            "name": "LowerLeftFirstMolar"
+          },
+          {
+            "name": "UpperRightSecondMolar"
+          },
+          {
+            "name": "UpperLeftSecondMolar"
+          },
+          {
+            "name": "LowerRightSecondMolar"
+          },
+          {
+            "name": "LowerLeftSecondMolar"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Treasury",
+      "docs": [
+        "Platform treasury collects the 2% funding fee.",
+        "Single global PDA seeded by [\"treasury\"]."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_collected",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
