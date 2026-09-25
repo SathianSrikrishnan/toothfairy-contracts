@@ -1,0 +1,22 @@
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {parseEnv} from 'node:util';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {Connection,PublicKey,Transaction} from '@solana/web3.js';
+if(process.argv[2]!=='--handoff-approved-buffer')throw Error('Explicit handoff required');
+const dir='docs/audits/2026-09-17-continuity-upgrade/',r=JSON.parse(readFileSync(dir+'upload.json'));
+if(r.status!=='uploaded_verified')throw Error('Reconcile existing state first');
+const rpc=parseEnv(readFileSync('C:/Users/sathi/Projects/tooth-fairy-network/.env.local','utf8')).NEXT_PUBLIC_SOLANA_RPC;
+const c=new Connection(rpc,'finalized'),buffer=new PublicKey(r.buffer),authority='Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko';
+if(await c.getGenesisHash()!=='5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d')throw Error('Wrong network');
+const a=await c.getAccountInfo(buffer),balance=await c.getBalance(new PublicKey(r.payer));
+if(!a||a.data.readUInt32LE(0)!==1||new PublicKey(a.data.subarray(5,37)).toBase58()!==r.payer||createHash('sha256').update(a.data.subarray(37)).digest('hex')!==r.candidateSha256||r.balanceBefore-balance-a.lamports+7000>r.feeCapLamports)throw Error('Buffer or fee mismatch');
+const lifetime=await c.getLatestBlockhash('confirmed');writeFileSync(dir+'handoff-request.json',JSON.stringify(lifetime));
+const result=spawnSync('wsl.exe',['-d','Ubuntu','--','node','scripts/sign-continuity-handoff.mjs'],{encoding:'utf8'});if(result.status!==0)throw Error('Signer failed');
+const tx=Transaction.from(Buffer.from(JSON.parse(readFileSync(dir+'signed-handoff.json')).transaction,'base64')),ix=tx.instructions[2];
+if(!tx.verifySignatures()||tx.instructions.length!==3||!tx.feePayer.equals(new PublicKey(r.payer))||ix.programId.toBase58()!=='BPFLoaderUpgradeab1e11111111111111111111111'||ix.data.readUInt32LE(0)!==4||!ix.keys[0].pubkey.equals(buffer)||ix.keys[1].pubkey.toBase58()!==r.payer||ix.keys[2].pubkey.toBase58()!==authority)throw Error('Handoff mismatch');
+if(!existsSync(dir+'handoff-attempt.json'))writeFileSync(dir+'handoff-attempt.json',JSON.stringify({at:new Date().toISOString(),buffer:r.buffer,authority}),{flag:'wx'});
+const signature=await c.sendRawTransaction(tx.serialize(),{skipPreflight:false,preflightCommitment:'confirmed',maxRetries:20});
+let confirmed=false;for(let n=0;n<40;n++){const info=await c.getAccountInfo(buffer,'confirmed');if(info&&new PublicKey(info.data.subarray(5,37)).toBase58()===authority){confirmed=true;break;}await new Promise(resolve=>setTimeout(resolve,700));}
+const proof={checkedAt:new Date().toISOString(),buffer:r.buffer,authority,signature,confirmed,programUpgraded:false};
+writeFileSync(dir+'handoff.json',JSON.stringify(proof,null,2));console.log(JSON.stringify(proof));if(!confirmed)process.exitCode=1;

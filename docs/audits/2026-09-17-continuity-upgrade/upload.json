@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-17T13:16:01.903Z",
+  "program": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "buffer": "AFGaUWV1Jy1cSSodegu9f5kGD4MFEs56khUxv7Bn93br",
+  "payer": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "refundAddress": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "rentLamports": 2219457080,
+  "feeCapLamports": 20000000,
+  "balanceBefore": 3108269506,
+  "candidateSha256": "a21e633835be8c8f1fc686068ccfa9ebc92e8e07e82cc850efa18937236765c0",
+  "status": "uploaded_verified",
+  "mainnetProgramChanged": false,
+  "checkedAt": "2026-09-17T13:34:03.371Z",
+  "bufferLamports": 2219497720,
+  "bufferBytes": 436773,
+  "bufferOwner": "BPFLoaderUpgradeab1e11111111111111111111111",
+  "bufferAuthority": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "balanceAfter": 885334786,
+  "payerDebitLamports": 2222934720,
+  "cliExitCode": 1,
+  "networkFeesLamports": 3437000
+}

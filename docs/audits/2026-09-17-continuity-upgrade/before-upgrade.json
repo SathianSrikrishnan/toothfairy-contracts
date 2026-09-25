@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-17T13:28:22.064Z",
+  "deployedSlot": "436210094",
+  "upgradeAuthority": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "candidateMatches": false,
+  "deployedSha256": "04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0",
+  "sampleDepositHashes": [
+    {
+      "address": "6HxuPEcDdy7S7d25325qd1GFeKukPWeF1pQ91N6St69A",
+      "owner": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+      "sha256": "a17ddec2d336452c43727165b9c8fc8a50512a1315657634b0b4605e6096f039"
+    },
+    {
+      "address": "7KZTwiFAnXbMMh4KqnPXYYW23ur27S9uS9gLMs16Z19e",
+      "owner": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+      "sha256": "dcfe912f4ff1106f6c1f5a0d89db417a837bd4e899305221eb2fd5b2e1637a4d"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-09-17T14:50:40.109Z",
+  "status": {
+    "__kind": "Executed",
+    "timestamp": "6aabfe0d"
+  },
+  "signature": "5U4xLz7T1Gp7NEcTCLnS6WjQGdBB22cpHwWTii2xSoesmcSWsdHMtLfCBAkAAiDKJ7kU4hshTQkdSwGuvFfCSgra",
+  "error": null,
+  "refundLamports": 3042826800,
+  "bufferExists": false,
+  "feeLamports": 7265
+}

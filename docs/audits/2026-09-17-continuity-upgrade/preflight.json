@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-09-17T13:12:58.721Z",
+  "readOnly": true,
+  "program": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "programDataAddress": "5ZUXyjYZaXAbSAC4EQk2Xu5HhEcogamn7gsG4Mnr7zkM",
+  "upgradeAuthority": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "deployedSlot": "436210094",
+  "candidateBytes": 436736,
+  "candidateSha256": "a21e633835be8c8f1fc686068ccfa9ebc92e8e07e82cc850efa18937236765c0",
+  "baselineBytes": 437768,
+  "baselineSha256": "04cc06a3f9b6795b472a3de6e8a2c5b15b0f8d71135f1a5f4034f735e743d1e0",
+  "sourceSha256": "033462bb795645b1bd4f72a48d4ce5c920843015e06228078f6d1480b0a7aa54",
+  "bufferRentLamports": 2219457080,
+  "permanentTopUpLamports": 0,
+  "treasuryBalanceLamports": 284801120,
+  "temporaryLiquidityShortfallBeforeFeesLamports": 1934655960,
+  "bufferUploaded": false,
+  "proposalCreated": false,
+  "mainnetChanged": false
+}
