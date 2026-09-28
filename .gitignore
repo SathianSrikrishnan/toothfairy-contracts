@@ -13,3 +13,6 @@ test-ledger
 !.env.example
 *.secret.*
 .server-key.json
+
+# Devnet walk keys (private; never commit)
+docs/audits/*/devnet-walk-state.json

@@ -1,0 +1,66 @@
+{
+  "at": "2026-09-28T14:31:20.080Z",
+  "rpc": "devnet.helius-rpc.com",
+  "programId": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "candidateSha256": "bfda63a9c58ee4e5972180f7e8e111f44725fc6f5da4728a33f3df15e57dbb97",
+  "treasury": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "guardian": "C3M636J3maXMQnafLY1aNVhj2mmJnQC3LHDaZ7wmCHsd",
+  "coins": [
+    {
+      "coin": "dollars",
+      "mint": "G59c7wEtr1AppcmpvBUTGmzNsrVANzGcr9uZT1bcrU4z",
+      "txs": {
+        "deposit": "qA7ZExwWaJbwjsasTapdFAWGo6Yo2NPPmQyDhpfdRCyGSJP2G3ZZbKXPGd4rkTSa7aWJTp9XQFpemctRsFTT57t",
+        "releaseEarly": "5gPDfq7tKJPewT1zmfxEprHaYkzqhFcZnZ3ee5QajbHxJPoRvwpoqhm4T1CHVkWE87bC9TNNFE9Tk3LHkqw7jNpx",
+        "grow": "6DHAgnaFPsdFX4c61o4TvHyoWyVB4isyC77svdFfrScUtEnwmgC3oHG7vvht7JNMRCDmfPwJA8T9FQsFcH1Mp3N",
+        "recoverRent": "iZCH5JKWS2BWFxxvs68LcXoyfMdqysm7mJ25yBLHzvsXwKKpn9hBr3a8TVDJ12kMtMGnxG3bUPixkTKPXz8UUVX"
+      },
+      "lockedUnits": "10000000",
+      "grown": {
+        "name": "Mum · grown",
+        "units": "10000000",
+        "lockUntil": "2031-09-28T20:31:26.000Z"
+      },
+      "rentRecoveredLamports": 3205560
+    },
+    {
+      "coin": "bitcoin",
+      "mint": "7wkKzF5VMaJRVSScfi757yYGJGffVjBrkAP1HjwKyHpF",
+      "txs": {
+        "allowlist": "5RDTV2sXSyDwcFYVAMXBSmEtTQa3S7VE1dAkpfzzXe5osHadVLz29MyEYthqkDkBgi8NhXx6E4T7KNpm4hMQqdze",
+        "deposit": "2oqLEdNd1kFbAHcMYDroAtdvceAJmCwogjo2rQ1J4CLHm59DURD1JYzDJCr1sjx8sSjefQPozGRPNY5uZKrfVvfP",
+        "releaseEarly": "PVS84BGEKjhPbwSa8auBG6hto8wZ4GWiRCa5aBaDCwbzLQVRV553L85G2MqhLYGoycUEpXuGcMc7hFVQ4ZHy1EP",
+        "grow": "5rTUADHohMieXFPMRMnkXzECDdUaQiPQaFzZbQ1G4isgowiaw1DBF6CkheDoSonnmbULFnUgmhdNhua4q9J4D4gV",
+        "recoverRent": "2caLQrmzcnrtfjUh7Q5TAxgoxVUm5tN1ibWuSGBDD2aUHomi4rbvScw8QNbeRZkaGGLHzWZJMRz1LVkCjjRUdTVu"
+      },
+      "lockedUnits": "8900",
+      "grown": {
+        "name": "Uncle Jay · grown",
+        "units": "8900",
+        "lockUntil": "2031-09-28T20:31:35.000Z"
+      },
+      "rentRecoveredLamports": 3205560
+    },
+    {
+      "coin": "solana",
+      "mint": "So11111111111111111111111111111111111111112",
+      "txs": {
+        "allowlist": "HT9TPwBtXo6J8tAFT3WknPddJxfcbSkncixNHYkFzd4m71pVnZe9x6e7Jkc9GUfvCybytqbvBLhEuaLtFXkPMwW",
+        "deposit": "4iTxdi4UMzC3Jea8jtsZiorDaKKtrnFCXSEQyZAcswcFa2D3Xw8FgyEwbkGiK4fn34beguAebq3FR5L4ibW4KDdH",
+        "releaseEarly": "2ehdwSc8kXzmGSgy3jqXYSzEucLgFHaC9dxeYAXdfDXcYEk1wkWXwSQrEBmVAP1n7JUrSZsgd94st9ewzijVp622",
+        "grow": "ffQ64gXZpgLhwJghUPLu6jc2SLf9QHArYtmXGxmepGnz4H9NemGJEqFwGS9KWBcPFerdg6g6ai22ppDcW7iCm5i",
+        "recoverRent": "564Vxp1M7mzd9tNfCYaFdMzhotC2irrn83imNkgtYztYCizDqaA8GL66dvBMYymgpjtvQowdUGTXWPgueA31nXN1"
+      },
+      "lockedUnits": "50000000",
+      "grown": {
+        "name": "Grandma Rosa · grown",
+        "units": "50000000",
+        "lockUntil": "2031-09-28T20:31:45.000Z"
+      },
+      "rentRecoveredLamports": 3205560
+    }
+  ],
+  "childProfile": "6QnBWnt2V8vgi66B442WMADjfyVH67XNMqXgkEi36Xoc",
+  "milestone": "6yZwWP9AwQJxD1rTqKnW98Pjd9zoZepp368XjcyPoRSJ",
+  "passed": true
+}
