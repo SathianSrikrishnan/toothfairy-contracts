@@ -1,0 +1,25 @@
+{
+  "at": "2026-09-28T17:06:33.921Z",
+  "signature": "2CcwMGfT84m89yzsi7U3LLUhNkZrLS1MEKqBPWKznXvY68Y1xwETbiabG1158d3bcr2T7bxkHaPC1V7CUycHSXxK",
+  "createKey": "DJyVjJaqsfzgLipAK9ebVPbXQ3KqfwoVi4anX9sFpqVb",
+  "multisig": "DqPUgU5CDqtwVetcDrd6zz1DRLK9DR4XTnS1jnrsxNbo",
+  "vault": "73uggkoDfjoeFeapDgsa1EPai9iMKFqs1QeTH5VPz4LE",
+  "threshold": 2,
+  "timeLockSeconds": 604800,
+  "autonomous": true,
+  "members": [
+    [
+      "2UPEsHM9HCwxrfeyGun1Mx312yEktJe9jgF8PsuaTcHb",
+      7
+    ],
+    [
+      "5fWRv9gLT2JuZnrRXRtCrqnQGiy8E4h2NftrVh9YdYq9",
+      7
+    ],
+    [
+      "ELrLeuWRUu4yFJfpwNwtxB41MFU3LLw2XGvbpmCbMKQ8",
+      7
+    ]
+  ],
+  "ok": true
+}
