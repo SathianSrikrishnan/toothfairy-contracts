@@ -132,11 +132,11 @@ describe("toothfairy-escrow", () => {
     console.log("  ✓ Milestone created: Upper Right Central Incisor");
   });
 
-  // ── 4. Guardian deposits SOL (immediate) — 2% fee ──
-  it("Guardian deposits SOL with immediate lock (2% fee)", async () => {
+  // ── 4. Guardian deposits SOL (immediate) — no fee since Vault 2.0 ──
+  it("Guardian deposits SOL with immediate lock (no fee)", async () => {
     const depositAmount = 0.5 * LAMPORTS_PER_SOL; // 500,000,000 lamports
-    const expectedFee = Math.floor(depositAmount * 200 / 10000); // 2% = 10,000,000
-    const expectedNet = depositAmount - expectedFee; // 490,000,000
+    const expectedFee = 0; // fees removed in Vault 2.0 (was 2%)
+    const expectedNet = depositAmount - expectedFee;
 
     const [depositPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("deposit"), milestonePda0.toBuffer(), Buffer.from([0, 0, 0, 0])],
@@ -169,13 +169,13 @@ describe("toothfairy-escrow", () => {
     const treasury = await program.account.treasury.fetch(treasuryPda);
     expect(treasury.totalCollected.toNumber()).to.equal(expectedFee);
 
-    console.log(`  ✓ Dad deposited 0.5 SOL → net ${expectedNet / LAMPORTS_PER_SOL} SOL, fee ${expectedFee / LAMPORTS_PER_SOL} SOL (2%)`);
+    console.log(`  ✓ Dad deposited 0.5 SOL → net ${expectedNet / LAMPORTS_PER_SOL} SOL, fee ${expectedFee / LAMPORTS_PER_SOL} SOL`);
   });
 
   // ── 5. Grandma deposits SOL (3-year lock) ──
   it("Grandma deposits SOL with 3-year lock", async () => {
     const depositAmount = 1 * LAMPORTS_PER_SOL;
-    const expectedFee = Math.floor(depositAmount * 200 / 10000);
+    const expectedFee = 0;
     const expectedNet = depositAmount - expectedFee;
 
     const [depositPda] = PublicKey.findProgramAddressSync(

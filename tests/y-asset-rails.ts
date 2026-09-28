@@ -174,10 +174,10 @@ describe("asset rails (per-mint allowlist)", () => {
     );
   });
 
-  it("refuses a fee above two percent", async () => {
+  it("refuses any fee (fees are off since Vault 2.0)", async () => {
     await expectError(
       program.methods
-        .initializeAssetConfig(new anchor.BN(1_000), 201)
+        .initializeAssetConfig(new anchor.BN(1_000), 1)
         .accounts({
           authority,
           config: configPda,
@@ -209,7 +209,7 @@ describe("asset rails (per-mint allowlist)", () => {
 
   it("allowlists an 8-decimal asset and a second 6-decimal asset", async () => {
     for (const [mint, min, fee] of [
-      [btc, 1_000, 200],
+      [btc, 1_000, 0],
       [usd2, 10_000, 0],
     ] as const) {
       await program.methods
@@ -225,25 +225,25 @@ describe("asset rails (per-mint allowlist)", () => {
     }
     const cfg = await program.account.assetConfig.fetch(assetConfigPda(btc));
     expect(cfg.decimals).to.equal(8);
-    expect(cfg.feeBps).to.equal(200);
+    expect(cfg.feeBps).to.equal(0);
     expect(cfg.enabled).to.equal(true);
     expect(cfg.minDepositUnits.toNumber()).to.equal(1_000);
   });
 
-  it("deposits $10 of BTC: exact fee to the asset treasury, net locked for the child", async () => {
+  it("deposits $10 of BTC: every sat locked for the child, nothing to the treasury", async () => {
     const accounts = await depositAccounts(btc, 0, auntBtc, btcTreasury);
     await deposit(accounts, 11_911, { fiveYears: {} });
 
-    expect(await balance(accounts.depositVault)).to.equal(11_673);
-    expect(await balance(btcTreasury)).to.equal(238);
+    expect(await balance(accounts.depositVault)).to.equal(11_911);
+    expect(await balance(btcTreasury)).to.equal(0);
     const receipt = await program.account.tokenDeposit.fetch(accounts.assetDeposit);
     expect(receipt.mint.equals(btc)).to.equal(true);
     expect(receipt.depositorName).to.equal("Aunt");
-    expect(receipt.amountUnits.toNumber()).to.equal(11_673);
+    expect(receipt.amountUnits.toNumber()).to.equal(11_911);
     expect(receipt.lockUntil.toNumber()).to.be.greaterThan(0);
     const aggregate = await program.account.assetMilestone.fetch(assetMilestonePda(btc));
     expect(aggregate.depositCount).to.equal(1);
-    expect(aggregate.totalDeposited.toNumber()).to.equal(11_673);
+    expect(aggregate.totalDeposited.toNumber()).to.equal(11_911);
   });
 
   it("keeps each asset's totals separate within one tooth", async () => {
@@ -255,7 +255,7 @@ describe("asset rails (per-mint allowlist)", () => {
     const usdAgg = await program.account.assetMilestone.fetch(assetMilestonePda(usd2));
     const btcAgg = await program.account.assetMilestone.fetch(assetMilestonePda(btc));
     expect(usdAgg.totalDeposited.toNumber()).to.equal(10_000_000);
-    expect(btcAgg.totalDeposited.toNumber()).to.equal(11_673);
+    expect(btcAgg.totalDeposited.toNumber()).to.equal(11_911);
   });
 
   it("rejects an asset that is not allowlisted", async () => {
@@ -356,7 +356,7 @@ describe("asset rails (per-mint allowlist)", () => {
     );
     const before = await balance(auntBtc);
     await program.methods.refundAssetDeposit().accounts(refundAccounts(aunt.publicKey, auntBtc)).signers([aunt]).rpc();
-    expect((await balance(auntBtc)) - before).to.equal(4_900);
+    expect((await balance(auntBtc)) - before).to.equal(5_000);
     expect((await program.account.tokenDeposit.fetch(accounts.assetDeposit)).state).to.equal(2);
   });
 
@@ -387,11 +387,11 @@ describe("asset rails (per-mint allowlist)", () => {
       .signers([nextGuardian])
       .rpc();
 
-    expect(await balance(destination)).to.equal(11_673);
+    expect(await balance(destination)).to.equal(11_911);
     expect(await balance(vault)).to.equal(0);
     expect((await program.account.tokenDeposit.fetch(assetDepositPda(btc, 0))).state).to.equal(3);
     const aggregate = await program.account.assetMilestone.fetch(assetMilestonePda(btc));
-    expect(aggregate.totalSettled.toNumber()).to.equal(11_673 + 4_900);
+    expect(aggregate.totalSettled.toNumber()).to.equal(11_911 + 5_000);
   });
 
   it("lets only the config authority withdraw an asset's fees", async () => {
@@ -407,6 +407,8 @@ describe("asset rails (per-mint allowlist)", () => {
       });
 
     await expectError(withdraw(outsider.publicKey, await ata(btc, outsider.publicKey)).signers([outsider]).rpc(), "NotConfigAuthority");
+    // Nothing is collected now; seed the treasury to prove any balance left from before stays withdrawable.
+    await mintTo(provider.connection, payer, btc, btcTreasury, payer, 238);
     const treasuryBefore = await balance(btcTreasury);
     await withdraw(authority, authorityBtc).rpc();
     expect(await balance(authorityBtc)).to.equal(238);

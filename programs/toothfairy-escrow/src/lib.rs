@@ -31,8 +31,8 @@ const MIN_TOKEN_DEPOSIT_UNITS: u64 = 10_000;
 /// Refund grace period (7 days in seconds) — depositors can reclaim within this window
 const REFUND_GRACE_PERIOD: i64 = 7 * 24 * 60 * 60;
 
-/// Platform fee in basis points (200 = 2.0%)
-const PLATFORM_FEE_BPS: u64 = 200;
+/// Platform fee in basis points. Owner decision 2026-09-28: no fees. Was 200 (2.0%) before Vault 2.0.
+const PLATFORM_FEE_BPS: u64 = 0;
 
 /// Basis points denominator
 const FEE_DENOMINATOR: u64 = 10_000;
@@ -185,8 +185,9 @@ fn validate_admin_authority_transfer(
 // ["token_config"] USDC rail, its accounts and its instructions are untouched.
 // ============================================================================
 
-/// Highest fee an asset rail may charge: the legacy 2.0% platform fee.
-const MAX_ASSET_FEE_BPS: u16 = 200;
+/// Highest fee an asset rail may charge. Zero since Vault 2.0 (owner, 2026-09-28): a fee can only
+/// return through a code upgrade, which carries the 7-day notice.
+const MAX_ASSET_FEE_BPS: u16 = 0;
 
 /// Classic SPL mints above nine decimals are not supported.
 const MAX_ASSET_DECIMALS: u8 = 9;
@@ -2846,7 +2847,7 @@ pub enum TfnError {
     AssetDecimalsUnsupported,
     #[msg("Asset minimum deposit must be greater than zero")]
     InvalidAssetMinimum,
-    #[msg("Asset fee cannot exceed 200 basis points")]
+    #[msg("Fees are switched off: an asset fee must be 0")]
     AssetFeeTooHigh,
     #[msg("New deposits of this asset are switched off")]
     AssetDisabled,
@@ -2865,7 +2866,8 @@ mod token_v2_tests {
 
     #[test]
     fn splits_usdc_deposit_fee_in_base_units() {
-        assert_eq!(split_token_amount(1_250_000, PLATFORM_FEE_BPS).unwrap(), (25_000, 1_225_000));
+        assert_eq!(split_token_amount(1_250_000, 200).unwrap(), (25_000, 1_225_000));
+        assert_eq!(split_token_amount(1_250_000, PLATFORM_FEE_BPS).unwrap(), (0, 1_250_000));
     }
 
     #[test]
@@ -2922,7 +2924,7 @@ mod token_v2_tests {
                 now,
             )
             .unwrap(),
-            (25_000, 1_225_000, now + 3 * SECONDS_PER_YEAR),
+            (0, 1_250_000, now + 3 * SECONDS_PER_YEAR), // no fee since Vault 2.0
         );
 
         assert!(prepare_token_deposit(
@@ -3070,7 +3072,8 @@ mod asset_rail_tests {
 
     #[test]
     fn accepts_eight_decimal_bitcoin_style_assets_up_to_nine_decimals() {
-        assert!(validate_asset_config_input(8, 1_000, 200).is_ok());
+        assert!(validate_asset_config_input(8, 1_000, 0).is_ok());
+        assert!(validate_asset_config_input(8, 1_000, 1).is_err());
         assert!(validate_asset_config_input(6, 10_000, 0).is_ok());
         assert!(validate_asset_config_input(9, 1, 0).is_ok());
         assert!(validate_asset_config_input(10, 1_000, 0).is_err());
@@ -3117,7 +3120,7 @@ mod asset_rail_tests {
 
     #[test]
     fn keeps_the_legacy_usdc_rail_constants_unchanged() {
-        assert_eq!(PLATFORM_FEE_BPS, 200);
+        assert_eq!(PLATFORM_FEE_BPS, 0);
         assert_eq!(MIN_TOKEN_DEPOSIT_UNITS, 10_000);
         assert_eq!(u64::from(MAX_ASSET_FEE_BPS), PLATFORM_FEE_BPS);
     }
@@ -3145,7 +3148,7 @@ mod vault_v2_tests {
 
         // Money is conserved: fee + net is exactly the deposit, and the fee never beats 2%.
         #[test]
-        fn fee_split_conserves_every_unit(amount in any::<u64>(), fee_bps in 0u16..=MAX_ASSET_FEE_BPS) {
+        fn fee_split_conserves_every_unit(amount in any::<u64>(), fee_bps in 0u16..=200) {
             if let Ok((fee, net)) = split_token_amount(amount, u64::from(fee_bps)) {
                 prop_assert_eq!(fee + net, amount);
                 prop_assert!(u128::from(fee) * 10_000 <= u128::from(amount) * u128::from(fee_bps));
@@ -3211,7 +3214,7 @@ mod vault_v2_tests {
         // Asset rails accept at most 9 decimals, a positive minimum and at most 2%.
         #[test]
         fn asset_config_bounds(decimals in any::<u8>(), min in any::<u64>(), fee in any::<u16>()) {
-            prop_assert_eq!(validate_asset_config_input(decimals, min, fee).is_ok(), decimals <= 9 && min > 0 && fee <= 200);
+            prop_assert_eq!(validate_asset_config_input(decimals, min, fee).is_ok(), decimals <= 9 && min > 0 && fee == 0);
         }
     }
 }

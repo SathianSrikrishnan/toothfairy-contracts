@@ -187,7 +187,7 @@ describe("USDC escrow V2 deposit rail", () => {
     };
   }
 
-  it("moves the exact two-percent fee and locks the net USDC", async () => {
+  it("locks the whole USDC deposit with no fee", async () => {
     const accounts = await depositAccounts(0);
     const sourceBefore = await getAccount(provider.connection, depositorUsdc);
 
@@ -207,14 +207,14 @@ describe("USDC escrow V2 deposit rail", () => {
     const aggregate = await program.account.tokenMilestone.fetch(tokenMilestonePda);
 
     expect(Number(sourceBefore.amount - sourceAfter.amount)).to.equal(1_250_000);
-    expect(Number(depositVault.amount)).to.equal(1_225_000);
-    expect(Number(treasuryVault.amount)).to.equal(25_000);
-    expect(deposit.amountUnits.toNumber()).to.equal(1_225_000);
+    expect(Number(depositVault.amount)).to.equal(1_250_000);
+    expect(Number(treasuryVault.amount)).to.equal(0);
+    expect(deposit.amountUnits.toNumber()).to.equal(1_250_000);
     expect(deposit.depositorName).to.equal("Dad");
     expect(deposit.vault.toBase58()).to.equal(accounts.depositVault.toBase58());
     expect(deposit.lockUntil.toNumber()).to.be.greaterThan(0);
     expect(aggregate.depositCount).to.equal(1);
-    expect(aggregate.totalDeposited.toNumber()).to.equal(1_225_000);
+    expect(aggregate.totalDeposited.toNumber()).to.equal(1_250_000);
   });
 
   it("rejects a deposit below one cent without creating a receipt", async () => {
@@ -359,7 +359,7 @@ describe("USDC escrow V2 deposit rail", () => {
     const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
     const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
 
-    expect(Number(childAfter.amount - childBefore.amount)).to.equal(1_225_000);
+    expect(Number(childAfter.amount - childBefore.amount)).to.equal(1_250_000);
     expect(Number(treasuryAfter.amount - treasuryBefore.amount)).to.equal(0);
     expect(Number(vaultAfter.amount)).to.equal(0);
     expect(deposit.state).to.equal(3);
@@ -391,7 +391,7 @@ describe("USDC escrow V2 deposit rail", () => {
     const sourceAfter = await getAccount(provider.connection, depositorUsdc);
     const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
     const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
-    expect(Number(sourceAfter.amount - sourceBefore.amount)).to.equal(980_000);
+    expect(Number(sourceAfter.amount - sourceBefore.amount)).to.equal(1_000_000);
     expect(Number(vaultAfter.amount)).to.equal(0);
     expect(deposit.state).to.equal(2);
   });
@@ -425,11 +425,11 @@ describe("USDC escrow V2 deposit rail", () => {
     const vaultAfter = await getAccount(provider.connection, accounts.depositVault);
     const deposit = await program.account.tokenDeposit.fetch(accounts.tokenDeposit);
     const aggregate = await program.account.tokenMilestone.fetch(tokenMilestonePda);
-    expect(Number(childAfter.amount - childBefore.amount)).to.equal(490_000);
+    expect(Number(childAfter.amount - childBefore.amount)).to.equal(500_000);
     expect(Number(vaultAfter.amount)).to.equal(0);
     expect(deposit.state).to.equal(1);
-    expect(aggregate.totalDeposited.toNumber()).to.equal(2_695_000);
-    expect(aggregate.totalSettled.toNumber()).to.equal(2_695_000);
+    expect(aggregate.totalDeposited.toNumber()).to.equal(2_750_000);
+    expect(aggregate.totalSettled.toNumber()).to.equal(2_750_000);
   });
 
   it("hands a prefunded reserve to a new guardian who can withdraw to the updated wallet", async () => {
@@ -444,7 +444,7 @@ describe("USDC escrow V2 deposit rail", () => {
     const withdraw=(who:PublicKey)=>program.methods.earlyWithdrawTokenDeposit().accounts({guardian:who,childProfile:childProfilePda,milestone:milestonePda,config:configPda,tokenConfig:tokenConfigPda,tokenMint:usdcMint,tokenMilestone:tokenMilestonePda,tokenDeposit:accounts.tokenDeposit,depositVault:accounts.depositVault,childTokenAccount:destination,tokenTreasuryVault,tokenProgram:TOKEN_PROGRAM_ID});
     let denied=false;try{await withdraw(guardian).rpc();}catch{denied=true;}expect(denied).equal(true);
     await withdraw(nextGuardian.publicKey).signers([nextGuardian]).rpc();
-    expect((await getAccount(provider.connection,destination)).amount.toString()).equal('980000');
+    expect((await getAccount(provider.connection,destination)).amount.toString()).equal('1000000');
     expect((await getAccount(provider.connection,accounts.depositVault)).amount.toString()).equal('0');
     expect((await program.account.tokenDeposit.fetch(accounts.tokenDeposit)).state).equal(3);
   });
@@ -488,6 +488,8 @@ describe("USDC escrow V2 deposit rail", () => {
       expect(String(error)).to.include("NotConfigAuthority");
     }
 
+    // No new fees since Vault 2.0; fees collected before the upgrade stay withdrawable.
+    await mintTo(provider.connection, payer, usdcMint, tokenTreasuryVault, payer, 55_000);
     const authorityBefore = await getAccount(provider.connection, depositorUsdc);
     const treasuryBefore = await getAccount(provider.connection, tokenTreasuryVault);
     await program.methods
