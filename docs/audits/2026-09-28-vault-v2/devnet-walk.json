@@ -1,8 +1,8 @@
 {
-  "at": "2026-09-28T14:31:20.080Z",
+  "at": "2026-09-28T15:19:31.759Z",
   "rpc": "devnet.helius-rpc.com",
   "programId": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
-  "candidateSha256": "bfda63a9c58ee4e5972180f7e8e111f44725fc6f5da4728a33f3df15e57dbb97",
+  "candidateSha256": "6a494ecd047dd64b8fff8ce3443b94ad13161b2ff3895482ec7fc92cb50beae6",
   "treasury": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
   "guardian": "C3M636J3maXMQnafLY1aNVhj2mmJnQC3LHDaZ7wmCHsd",
   "coins": [
@@ -10,16 +10,16 @@
       "coin": "dollars",
       "mint": "G59c7wEtr1AppcmpvBUTGmzNsrVANzGcr9uZT1bcrU4z",
       "txs": {
-        "deposit": "qA7ZExwWaJbwjsasTapdFAWGo6Yo2NPPmQyDhpfdRCyGSJP2G3ZZbKXPGd4rkTSa7aWJTp9XQFpemctRsFTT57t",
-        "releaseEarly": "5gPDfq7tKJPewT1zmfxEprHaYkzqhFcZnZ3ee5QajbHxJPoRvwpoqhm4T1CHVkWE87bC9TNNFE9Tk3LHkqw7jNpx",
-        "grow": "6DHAgnaFPsdFX4c61o4TvHyoWyVB4isyC77svdFfrScUtEnwmgC3oHG7vvht7JNMRCDmfPwJA8T9FQsFcH1Mp3N",
-        "recoverRent": "iZCH5JKWS2BWFxxvs68LcXoyfMdqysm7mJ25yBLHzvsXwKKpn9hBr3a8TVDJ12kMtMGnxG3bUPixkTKPXz8UUVX"
+        "deposit": "595if61zi1m8aUHNuD1A5yzCqdgjnpvigiLhXnyVY6gt9KH661hH89T6w1azBqaMsgyGQdtC5QMMp6dfFM3LRXjW",
+        "releaseEarly": "5DGRyoVLZDDey6CpVaZgjNYK5h71YUiaF4fi1s2y51hxnbC9SYby5Uupp471ecp2ShQk5QDVCeBGtv3Y5hopxjX6",
+        "grow": "5csHRiSijFfVwVees7EmExsitzRxSM7365LAH8UgKQM4Mb2oBgQsHeVNXxTwGFEvuMHkQFzC61tT5qFMh8RbT5RS",
+        "recoverRent": "242yrAQoypj7L2ZK8NoLjCZPU3RpAmSax3WypsTvSvwUsBvS3A4eafSBHe9EUKzQh4wxzoWMVa3uj9KHTfhuZcBR"
       },
       "lockedUnits": "10000000",
       "grown": {
         "name": "Mum · grown",
         "units": "10000000",
-        "lockUntil": "2031-09-28T20:31:26.000Z"
+        "lockUntil": "2031-09-28T21:19:36.000Z"
       },
       "rentRecoveredLamports": 3205560
     },
@@ -27,17 +27,16 @@
       "coin": "bitcoin",
       "mint": "7wkKzF5VMaJRVSScfi757yYGJGffVjBrkAP1HjwKyHpF",
       "txs": {
-        "allowlist": "5RDTV2sXSyDwcFYVAMXBSmEtTQa3S7VE1dAkpfzzXe5osHadVLz29MyEYthqkDkBgi8NhXx6E4T7KNpm4hMQqdze",
-        "deposit": "2oqLEdNd1kFbAHcMYDroAtdvceAJmCwogjo2rQ1J4CLHm59DURD1JYzDJCr1sjx8sSjefQPozGRPNY5uZKrfVvfP",
-        "releaseEarly": "PVS84BGEKjhPbwSa8auBG6hto8wZ4GWiRCa5aBaDCwbzLQVRV553L85G2MqhLYGoycUEpXuGcMc7hFVQ4ZHy1EP",
-        "grow": "5rTUADHohMieXFPMRMnkXzECDdUaQiPQaFzZbQ1G4isgowiaw1DBF6CkheDoSonnmbULFnUgmhdNhua4q9J4D4gV",
-        "recoverRent": "2caLQrmzcnrtfjUh7Q5TAxgoxVUm5tN1ibWuSGBDD2aUHomi4rbvScw8QNbeRZkaGGLHzWZJMRz1LVkCjjRUdTVu"
+        "deposit": "3ceBTbAgRrAvkxNnYenieoo5PdXffmoiU8zFPsfyVNPoVk5zP8X6u1Rw8U5fcrfBfaHbC4d11jcQB4nsUer8dWeX",
+        "releaseEarly": "63a8hvveQhj3AYy8zqkdGe1UMrPZRgBSEz6z6VgeBrwQtddxbT3EfuvPQfYfyXXQcTCTZvD3K9QUQu18PEumii2i",
+        "grow": "Z3A8aqPwjPFz1VePW18wxnDT77dvnQah1zmBtSuU53BPPTCFEBHAy9ZRhEp68qfYcLLGVtQkoZ2NCJrSNobCE9J",
+        "recoverRent": "2THw8x9ekZPqXGN7WMH8WH9CvBi8se2BiJ7tmdQ9K1Vp1G4XMwn47E2iDEV8MJxqfUugVJPfyLdSaf7dZDp79kEC"
       },
       "lockedUnits": "8900",
       "grown": {
         "name": "Uncle Jay · grown",
         "units": "8900",
-        "lockUntil": "2031-09-28T20:31:35.000Z"
+        "lockUntil": "2031-09-28T21:19:43.000Z"
       },
       "rentRecoveredLamports": 3205560
     },
@@ -45,17 +44,16 @@
       "coin": "solana",
       "mint": "So11111111111111111111111111111111111111112",
       "txs": {
-        "allowlist": "HT9TPwBtXo6J8tAFT3WknPddJxfcbSkncixNHYkFzd4m71pVnZe9x6e7Jkc9GUfvCybytqbvBLhEuaLtFXkPMwW",
-        "deposit": "4iTxdi4UMzC3Jea8jtsZiorDaKKtrnFCXSEQyZAcswcFa2D3Xw8FgyEwbkGiK4fn34beguAebq3FR5L4ibW4KDdH",
-        "releaseEarly": "2ehdwSc8kXzmGSgy3jqXYSzEucLgFHaC9dxeYAXdfDXcYEk1wkWXwSQrEBmVAP1n7JUrSZsgd94st9ewzijVp622",
-        "grow": "ffQ64gXZpgLhwJghUPLu6jc2SLf9QHArYtmXGxmepGnz4H9NemGJEqFwGS9KWBcPFerdg6g6ai22ppDcW7iCm5i",
-        "recoverRent": "564Vxp1M7mzd9tNfCYaFdMzhotC2irrn83imNkgtYztYCizDqaA8GL66dvBMYymgpjtvQowdUGTXWPgueA31nXN1"
+        "deposit": "2VRGKfjCqDf8Gzg9A5CmsvmX8iLWrXXZXHbqM6dbyiqT9eXVV1aUAo9eXBEHiqNBaT1SgtDyo8k4svQPVKKF7fTz",
+        "releaseEarly": "5svFsyWkJjbaEGMJY2yXmfMEpCnkEWmEuRwKxfVAxstcxFYh5QjS7CELep9Dz5oEaXQenZ4ZrPTp4GE5kWNzPXJH",
+        "grow": "3V4FnMyw7WKFzBCJ3nyaKHnNw2obra559gxeeXTQ6vsaFg3GAswkUtMStRoyxDRJr1E8KntdCAXK6mfUKMDyv8pV",
+        "recoverRent": "3X4eJ4MyE18YHHgKiY5bhjmjdeVCS17eSVhLoqiofMZzvdBjbNoZBn7Cy4ciDqm2byiTPVoJbitaagKLgcmmxeHQ"
       },
       "lockedUnits": "50000000",
       "grown": {
         "name": "Grandma Rosa · grown",
         "units": "50000000",
-        "lockUntil": "2031-09-28T20:31:45.000Z"
+        "lockUntil": "2031-09-28T21:19:51.000Z"
       },
       "rentRecoveredLamports": 3205560
     }

@@ -21,7 +21,7 @@ const RPC = process.env.DEVNET_RPC ?? 'https://api.devnet.solana.com';
 if (!new URL(RPC).hostname.includes('devnet')) throw Error('Devnet only');
 const STATE = 'docs/audits/2026-09-28-vault-v2/devnet-walk-state.json';
 const RECEIPT = 'docs/audits/2026-09-28-vault-v2/devnet-walk.json';
-const EXPECTED_SHA = 'bfda63a9c58ee4e5972180f7e8e111f44725fc6f5da4728a33f3df15e57dbb97';
+const EXPECTED_SHA = '6a494ecd047dd64b8fff8ce3443b94ad13161b2ff3895482ec7fc92cb50beae6';
 
 const wallet = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(`${os.homedir()}/.config/solana/id.json`, 'utf8'))));
 const connection = new Connection(RPC, 'confirmed');

@@ -3084,7 +3084,7 @@
     {
       "code": 6036,
       "name": "AssetFeeTooHigh",
-      "msg": "Asset fee cannot exceed 200 basis points"
+      "msg": "Fees are switched off: an asset fee must be 0"
     },
     {
       "code": 6037,
