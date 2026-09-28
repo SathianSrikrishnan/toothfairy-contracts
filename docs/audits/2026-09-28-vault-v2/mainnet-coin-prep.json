@@ -1,0 +1,10 @@
+{
+  "at": "2026-09-28T15:43:13.895Z",
+  "signature": "3HPKPHD9EHhPkJ8fv2tjia9n4WnWTZ6mJPB7nC4GAiAnEXnSLRuM5zHXYp5s2gJGhPQE3SN6vMsvd55sQ8Mz6159",
+  "treasuries": {
+    "dollars": "SkKLw6gPj1JXqu1YLu47DQH5dVZTTSMASxd1QdnYq29",
+    "bitcoin": "6deXzXeyqKeQC7dzNAWaTTG7awhYhScm8LT9ujmRWCBZ",
+    "solana": "ACqmLUZXEMad7H1PETtr7oSmcMuANiNAsqMnSeVGbcWv"
+  },
+  "squadsVaultLamports": 11038400
+}
