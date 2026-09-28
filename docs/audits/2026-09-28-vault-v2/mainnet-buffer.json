@@ -1,0 +1,16 @@
+{
+  "at": "2026-09-28",
+  "program": "FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC",
+  "programData": "5ZUXyjYZaXAbSAC4EQk2Xu5HhEcogamn7gsG4Mnr7zkM",
+  "extend": "see mainnet-extend.json: +109,912 bytes, 0.55835808 SOL, tx 2uzypHCZqisJmLB8H9XHHuPDuPDwCuMyzsbis4LGG7ngdTMJg4ZekhAkYx5Wb31bfLXPbSovkEQgBwMY4srHhsvW",
+  "buffer": "HCjDTmWQ4a7A8n4BbJLoXPQuu6uurFu2EQVxTst6mySc",
+  "bufferLamports": 2783093240,
+  "bufferCodeBytes": 547680,
+  "bufferCodeSha256": "6a494ecd047dd64b8fff8ce3443b94ad13161b2ff3895482ec7fc92cb50beae6",
+  "matchesCandidate": true,
+  "bufferAuthority": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "spillAddressForUpgrade": "5piptchcKR5qbJKqVJCjTo2rq1TouvpeAeH3XQuEYsXq",
+  "deployWalletAfter": "0.58383655 SOL (from 3.928154586: extend 0.55835808 + buffer 2.78309324 + fees ~0.0029)",
+  "liveProgramChanged": false,
+  "next": "Owner creates the Squads program-upgrade proposal (program FqCS..., buffer HCjD..., spill 5pip...) and 2 of 3 sign. Before execution: production release AU (fee-aware deposit worker) must be live."
+}

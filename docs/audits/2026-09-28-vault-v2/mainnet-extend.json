@@ -1,0 +1,23 @@
+{
+  "programData": "5ZUXyjYZaXAbSAC4EQk2Xu5HhEcogamn7gsG4Mnr7zkM",
+  "currentProgramBytes": 437768,
+  "additional": 109912,
+  "targetProgramBytes": 547680,
+  "rentLamports": 558352960,
+  "simulation": {
+    "err": null,
+    "logs": [
+      "Program ComputeBudget111111111111111111111111111111 invoke [1]",
+      "Program ComputeBudget111111111111111111111111111111 success",
+      "Program BPFLoaderUpgradeab1e11111111111111111111111 invoke [1]",
+      "Program 11111111111111111111111111111111 invoke [2]",
+      "Program 11111111111111111111111111111111 success",
+      "Extended ProgramData account by 109912 bytes",
+      "Program BPFLoaderUpgradeab1e11111111111111111111111 success"
+    ]
+  },
+  "signature": "2uzypHCZqisJmLB8H9XHHuPDuPDwCuMyzsbis4LGG7ngdTMJg4ZekhAkYx5Wb31bfLXPbSovkEQgBwMY4srHhsvW",
+  "programBytesAfter": 547680,
+  "lamportsSpent": 558358080,
+  "at": "2026-09-28T15:22:26.623Z"
+}
