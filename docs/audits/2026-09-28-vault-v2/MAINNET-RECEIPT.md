@@ -8,11 +8,12 @@
 | Live code = candidate byte for byte; authority unchanged; buffer closed, 2.78 SOL refunded | `mainnet-upgrade.json` |
 | All 289 pre-existing accounts unchanged | `mainnet-state-before.json` / `mainnet-state-after.json` |
 | Squads tx #5, coin settings: Dollars, Bitcoin, Solana at 0% | `mainnet-coins-on.json` |
+| **Canary on real money, all 3 coins passed:** US$1.01 USDC, 1,709 sats cbBTC and 0.0085 SOL each deposited (5-year lock), 0 fee taken, released early by the guardian in full, both rents recovered (3,205,560 lamports each), coins returned | `mainnet-canary.json` |
+| Production v31 (`dpl_vZaxoBVvN2JKarxtPLFiPXzF4EcA`): `TFN_ESCROW_FEE_BPS=0`, 37/37, worker 200s, print-QR 3/3 | product repo |
 
 **Notes:**
 - **Tx #5 verification:** Squads compressed it with the frozen lookup table `DZboAojT…xTfR`, whose entries 18/5/17 resolved to the USDC mint, System Program and wSOL mint. Instruction data matched exactly (minimums 10,000 / 1,000 / 1,000,000; fee 0). `mainnet-squads-verify-coins.mjs` does not resolve lookup tables yet, so it reported a false mismatch; it was checked by hand.
 - **Executing from Squads:** the Phantom request opens in the window that pressed Execute. The phone's Execute did not send.
 - **Still to do:**
-  - Release v31 with `TFN_ESCROW_FEE_BPS=0` (until then a legacy deposit lands 10.204081, which the worker accepts)
-  - A canary per coin
+  - **The first swap attempt timed out and was proven dead before the retry** (a busy network; the script now pays a capped priority fee and waits for the validity window)
   - The time-locked upgrade multisig

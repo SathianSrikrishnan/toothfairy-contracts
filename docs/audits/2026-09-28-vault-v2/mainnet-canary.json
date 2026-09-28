@@ -1,0 +1,121 @@
+{
+  "startedAt": "2026-09-28T16:41:31.380Z",
+  "guardian": "HLhSTs552gNBhGnM9Kqa3t5H8nvVYz43CRaSwXsQ1CUC",
+  "steps": {
+    "fund-guardian": {
+      "signature": "5GoXB6btxu9CZt51k3t3wvv1Ek22uji6JvJfXsynKNirNXUbFvtx7ux7xWKRcPpGWfprZ9cMDNmE3X6bBJTfsVZf",
+      "at": "2026-09-28T16:41:38.552Z"
+    },
+    "create-vault": {
+      "signature": "2PEzU6kdyockNEtw8amfGBQTkVX2XwWs5214y5Q6R8AQjHU3rAS1c18DTsAW4eYEZ9fg8rFK63X5AD7kpfLE1TMk",
+      "at": "2026-09-28T16:41:39.288Z"
+    },
+    "dollars-swap-pending": {
+      "signature": "511b7B8yh8igdSSfWJ4PduZUSGSaL5RH2fcsNBEkRLxY3VfFSE7BE1fiWdfpPBJUmQ96VAVX6tiWDBWRXaJm18nz",
+      "lastValidBlockHeight": 429415779
+    },
+    "dollars-swap": {
+      "signature": "511b7B8yh8igdSSfWJ4PduZUSGSaL5RH2fcsNBEkRLxY3VfFSE7BE1fiWdfpPBJUmQ96VAVX6tiWDBWRXaJm18nz",
+      "quotedOut": "1013310",
+      "at": "2026-09-28T16:43:13.980Z"
+    },
+    "dollars-deposit": {
+      "signature": "3xXUwd41QZw6C9iCtML8TyVr2aVfJjY8CJQuc98JDdD5x1saHCDVMock1ptuw5qAZzPnzZcBg84A7BgvH7jykMrd",
+      "at": "2026-09-28T16:43:14.742Z"
+    },
+    "dollars-release": {
+      "signature": "tvfEuU9433DB7pWryNBPHzEAQTnYVTL9L3tyTNhjNM6atcc4ng7b2GQv3ZWNH4UD1qMcu7TQf5EbkPY7haBpxjx",
+      "at": "2026-09-28T16:43:15.410Z"
+    },
+    "dollars-recover-rent": {
+      "signature": "567FYzQe8NoQJ64xWjUenaeKUPytWKeyptgZDYUqkrtGscuafCWSSpEujZeUnhHQbjBFdq59p1NPB3xp6eX2qTFV",
+      "at": "2026-09-28T16:43:18.106Z"
+    },
+    "dollars-return": {
+      "signature": "N22fNLAS6QDEr9z5pHsYDttf9zUujQi7wacU3Kj7uGyvBkcJg5ufAA8FmHXULGRH9uazgxN16UdgVmJr9zyaioJ",
+      "at": "2026-09-28T16:43:22.192Z"
+    },
+    "bitcoin-swap-pending": {
+      "signature": "4kVLfTDdqV1eSUUyRc4nou8PcQrCtw3ZLh1VX5HN5yttAVBUkRQeKGYN1AkTGkqQZMjxEKUDHgafZxqbHVxe4Gtr",
+      "lastValidBlockHeight": 429415817
+    },
+    "bitcoin-swap": {
+      "signature": "4kVLfTDdqV1eSUUyRc4nou8PcQrCtw3ZLh1VX5HN5yttAVBUkRQeKGYN1AkTGkqQZMjxEKUDHgafZxqbHVxe4Gtr",
+      "quotedOut": "1709",
+      "at": "2026-09-28T16:43:22.907Z"
+    },
+    "bitcoin-deposit": {
+      "signature": "2ierZmTMVuCos686qui3XmH5mqJM5q9wW1EgArdCJQ9QAwcQsoZvmpPRSANCGyeTbLHvWLXBz6wzdAMyCCcnZpVX",
+      "at": "2026-09-28T16:43:31.371Z"
+    },
+    "bitcoin-release": {
+      "signature": "2qrh8DL1wCe8gtBeSnX4Pex4eCdAZR2g8brGWW9Qot9y73u5gUyHerCtM4Mr4vvwBbdR68oLvQvgsyWZEFfCCXfA",
+      "at": "2026-09-28T16:43:32.039Z"
+    },
+    "bitcoin-recover-rent": {
+      "signature": "2a79q5VsSiV2h1gpK3HNjNqSa2giYCoQSDRpZiYj3uy1MejV8zvWGiFU7YnJn3AZrMux9HDK5kCbKHJYaCe4JjJC",
+      "at": "2026-09-28T16:43:38.015Z"
+    },
+    "bitcoin-return": {
+      "signature": "3SmDh948xYC41BiCYWz1VU4MYwKEs4Qtf2TrxR6JMj2F82wLegEatg8z7p6N6agSy8ncEbHHijUJQq9FftzgWKEw",
+      "at": "2026-09-28T16:43:38.693Z"
+    },
+    "solana-wrap": {
+      "signature": "gJm7qiiKQYe3K47fkURBhxSoAjfPLzYBVB1dXv6XfMjQjMyUNCgXT1ZayzZvfAjbHZMLzmdWRhjuEL8paJVKwx5",
+      "at": "2026-09-28T16:43:53.894Z"
+    },
+    "solana-deposit": {
+      "signature": "2cNPC9KqvADozc49oDcL1vuPMzXgJT8iZtUDBGhCzrBAN3iSXoT7A1Df22P8xmjVox6qpySqG2wbsTcWt5CxCNVr",
+      "at": "2026-09-28T16:43:54.626Z"
+    },
+    "solana-release": {
+      "signature": "2X59Bib5RmRMe4tXaf9ub3REnXqvfo5qEt9EeVCYUcdCEcckA3C8b1RMTLhMwhsPNwADwZa4RAEYpvUsw826L12j",
+      "at": "2026-09-28T16:43:56.259Z"
+    },
+    "solana-recover-rent": {
+      "signature": "2JrYpAfQGT2V7q8QRSAwbegsd7ekRbqMKCtPmj4GuxGB3qnFLw32Hv3h8Y7pprgrExC57miLr571TgJ5VyUudW1y",
+      "at": "2026-09-28T16:43:56.736Z"
+    },
+    "solana-return": {
+      "signature": "61w2AiCNVAtn9V7PGJGjYzukm3YkUyzrGWYc829Ke1gEuMJzxzP9zn9pq3p5hpLu6FtFvdyPPNvRhL88ffD5EkHJ",
+      "at": "2026-09-28T16:44:03.889Z"
+    },
+    "sweep-guardian": {
+      "signature": "HmJfcW9eREQMhP3wgxU7PX8eMRQqgDLdeVhiLu9EZLWiCV5b8v8Q7i4AYBx3fvMUu1ZTTYmBwyqtB12c8uUiEnr",
+      "at": "2026-09-28T16:44:04.787Z"
+    }
+  },
+  "childProfile": "AzYX2G37FFX3AQDhUwBkjAiQdSeHy5v8uVPYD3yjBAJy",
+  "milestone": "8AMufeaGqGJftAZRKMgK7LNLGnCV13MHc4pceoYFCbxJ",
+  "coins": {
+    "dollars": {
+      "amount": "1013476",
+      "lockedUnits": "1013476",
+      "lockUntil": "2031-09-28T22:43:16.000Z",
+      "feeTaken": "0",
+      "releasedUnits": "1013476",
+      "rentRecoveredLamports": 3205560,
+      "passed": true
+    },
+    "bitcoin": {
+      "amount": "1709",
+      "lockedUnits": "1709",
+      "lockUntil": "2031-09-28T22:43:31.000Z",
+      "feeTaken": "0",
+      "releasedUnits": "1709",
+      "rentRecoveredLamports": 3205560,
+      "passed": true
+    },
+    "solana": {
+      "amount": "8500000",
+      "lockedUnits": "8500000",
+      "lockUntil": "2031-09-28T22:43:54.000Z",
+      "feeTaken": "0",
+      "releasedUnits": "8500000",
+      "rentRecoveredLamports": 3205560,
+      "passed": true
+    }
+  },
+  "passed": true,
+  "finishedAt": "2026-09-28T16:44:04.794Z"
+}
