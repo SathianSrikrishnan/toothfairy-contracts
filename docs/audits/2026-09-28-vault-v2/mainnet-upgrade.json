@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-28T16:23:06.978Z",
+  "upgradeTx": "323uioU82zPaZyiBr1oStycT5X3ShAvcd1txMvv1u6H9FvDdV76GoLDvGUa8U4tYVhmpjVyyvYdHEt9AH1aqCqNk",
+  "deployedSlot": "451371458",
+  "upgradeAuthority": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "liveSha256": "6a494ecd047dd64b8fff8ce3443b94ad13161b2ff3895482ec7fc92cb50beae6",
+  "liveCodeMatchesCandidate": true,
+  "paddingAllZero": true,
+  "bufferClosed": true,
+  "deployWalletSOL": 3.35245447
+}
