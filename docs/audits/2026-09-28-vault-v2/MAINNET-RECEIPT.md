@@ -9,6 +9,7 @@
 | All 289 pre-existing accounts unchanged | `mainnet-state-before.json` / `mainnet-state-after.json` |
 | Squads tx #5, coin settings: Dollars, Bitcoin, Solana at 0% | `mainnet-coins-on.json` |
 | **Canary on real money, all 3 coins passed:** US$1.01 USDC, 1,709 sats cbBTC and 0.0085 SOL each deposited (5-year lock), 0 fee taken, released early by the guardian in full, both rents recovered (3,205,560 lamports each), coins returned | `mainnet-canary.json` |
+| **7-day upgrade delay live:** new Squads multisig `DqPU…xNbo` (same 3 members, 2 of 3, time lock 604,800 s, autonomous) holds the program upgrade authority via vault `73ug…z4LE` (Squads tx #6 on the current safe, verified from chain before approvals). Pause and coin settings stay with `Eu4B…uYko` (instant) | `mainnet-timelock-safe.json`, `mainnet-upgrade-authority-handoff.json` |
 | Production v31 (`dpl_vZaxoBVvN2JKarxtPLFiPXzF4EcA`): `TFN_ESCROW_FEE_BPS=0`, 37/37, worker 200s, print-QR 3/3 | product repo |
 
 **Notes:**
@@ -16,4 +17,3 @@
 - **Executing from Squads:** the Phantom request opens in the window that pressed Execute. The phone's Execute did not send.
 - **Still to do:**
   - **The first swap attempt timed out and was proven dead before the retry** (a busy network; the script now pays a capped priority fee and waits for the validity window)
-  - The time-locked upgrade multisig

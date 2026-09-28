@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-28T17:17:18.252Z",
+  "handoffTx": "2L75KNrFdQH5yKnzzDqKveXZMNUYAfLMCrmQWngdzuCpynjUtsfo2bJxo3678iRd2uEX9v33DZnznN1V25e8xswU",
+  "squadsTx": 6,
+  "programUpgradeAuthority": "73uggkoDfjoeFeapDgsa1EPai9iMKFqs1QeTH5VPz4LE",
+  "timeLockedSafe": "DqPUgU5CDqtwVetcDrd6zz1DRLK9DR4XTnS1jnrsxNbo",
+  "timeLockSeconds": 604800,
+  "threshold": 2,
+  "configAuthority_pause_and_coins": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "paused": false
+}
