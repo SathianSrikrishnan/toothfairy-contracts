@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint as TokenMint, Token, TokenAccount, TransferChecked};
+use anchor_spl::token::{self, CloseAccount, Mint as TokenMint, Token, TokenAccount, TransferChecked};
 
 declare_id!("FqCSNerRsjdxamLyiyTvqiGKZ4vnfYngLUuTKtSi7RTC");
 
@@ -219,6 +219,13 @@ fn prepare_asset_deposit(
     require!(net_units > 0, TfnError::NothingToDeposit);
     let lock_until = token_lock_until(now, lock_period)?;
     Ok((fee_units, net_units, lock_until))
+}
+
+/// A settled deposit's record and empty vault may be closed; an active one never.
+fn validate_asset_deposit_close(state: u8, vault_units: u64) -> Result<()> {
+    require!(state != TOKEN_DEPOSIT_ACTIVE, TfnError::DepositStillActive);
+    require!(vault_units == 0, TfnError::AssetVaultNotEmpty);
+    Ok(())
 }
 
 /// Move escrowed units out of an asset deposit vault, signed by the deposit PDA.
@@ -1233,6 +1240,39 @@ pub mod toothfairy_escrow {
         Ok(())
     }
 
+    /// Return a settled asset deposit's rent (its record and its empty vault) to whoever paid it.
+    /// Only the original depositor signs, so nobody else can erase a family's gift record.
+    /// Deposit indexes only ever increase, so a closed address is never reused.
+    pub fn close_settled_asset_deposit(ctx: Context<CloseSettledAssetDeposit>) -> Result<()> {
+        require!(!ctx.accounts.config.paused, TfnError::ContractPaused);
+        validate_asset_deposit_close(ctx.accounts.asset_deposit.state, ctx.accounts.deposit_vault.amount)?;
+
+        let deposit = &ctx.accounts.asset_deposit;
+        let milestone_key = deposit.milestone;
+        let mint_key = deposit.mint;
+        let deposit_index = deposit.deposit_index.to_le_bytes();
+        let deposit_bump = [deposit.bump];
+        let signer_seeds: &[&[u8]] = &[
+            b"asset_deposit",
+            milestone_key.as_ref(),
+            mint_key.as_ref(),
+            &deposit_index,
+            &deposit_bump,
+        ];
+        token::close_account(CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            CloseAccount {
+                account: ctx.accounts.deposit_vault.to_account_info(),
+                destination: ctx.accounts.depositor.to_account_info(),
+                authority: ctx.accounts.asset_deposit.to_account_info(),
+            },
+            &[signer_seeds],
+        ))?;
+
+        msg!("Settled asset deposit #{} closed; rent returned to the depositor", deposit.deposit_index);
+        Ok(())
+    }
+
     /// Claim a specific deposit — transfers escrowed SOL to the child's wallet.
     /// Only the guardian can trigger this (parental control).
     /// Respects time-lock: cannot claim before lock_until.
@@ -1403,9 +1443,11 @@ pub mod toothfairy_escrow {
     /// Close a child profile and reclaim rent.
     /// Only the guardian can call this. All milestones must be closed first.
     /// Rent is returned to the guardian's wallet.
+    /// Only a profile with no milestones can close: its totals count SOL only, so a USDC or asset
+    /// balance would be invisible here, and anyone could re-create the closed address as its guardian.
     pub fn close_profile(ctx: Context<CloseProfile>) -> Result<()> {
         let profile = &ctx.accounts.child_profile;
-        require!(profile.milestone_count == 0 || profile.total_deposited == profile.total_claimed, TfnError::ProfileHasActiveDeposits);
+        require!(profile.milestone_count == 0, TfnError::ProfileHasActiveDeposits);
 
         msg!("Profile closed for {}. Rent reclaimed.", profile.child_name);
         Ok(())
@@ -1414,18 +1456,11 @@ pub mod toothfairy_escrow {
     /// Close a milestone account and reclaim rent.
     /// Only the guardian can call this. All deposits for this milestone must be claimed or refunded.
     /// Rent is returned to the guardian's wallet.
-    pub fn close_milestone(ctx: Context<CloseMilestone>) -> Result<()> {
-        let milestone = &ctx.accounts.milestone;
-        require!(milestone.total_deposits == 0 || milestone.deposit_count == 0, TfnError::MilestoneHasActiveDeposits);
-
-        // Decrement milestone count on profile
-        let profile = &mut ctx.accounts.child_profile;
-        if profile.milestone_count > 0 {
-            profile.milestone_count -= 1;
-        }
-
-        msg!("Milestone #{} closed. Rent reclaimed.", milestone.milestone_index);
-        Ok(())
+    /// Refused since Vault 2.0: every USDC and asset release needs its milestone account, and this
+    /// account cannot see those balances, so closing it could strand a child's money for good.
+    /// The account layout is unchanged so existing clients still decode the instruction.
+    pub fn close_milestone(_ctx: Context<CloseMilestone>) -> Result<()> {
+        err!(TfnError::MilestoneHasActiveDeposits)
     }
 
     /// Close a deposit account and reclaim rent.
@@ -2424,6 +2459,44 @@ pub struct WithdrawAssetTreasury<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Original depositor closes a settled asset deposit and its empty vault; rent returns to them.
+/// The seeds pin this to an asset deposit (never a legacy ["token_deposit"] record).
+#[derive(Accounts)]
+pub struct CloseSettledAssetDeposit<'info> {
+    #[account(mut)]
+    pub depositor: Signer<'info>,
+
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+
+    pub token_mint: Box<Account<'info, TokenMint>>,
+
+    #[account(
+        mut,
+        close = depositor,
+        seeds = [
+            b"asset_deposit",
+            asset_deposit.milestone.as_ref(),
+            token_mint.key().as_ref(),
+            &asset_deposit.deposit_index.to_le_bytes(),
+        ],
+        bump = asset_deposit.bump,
+        constraint = asset_deposit.mint == token_mint.key() @ TfnError::WrongTokenMint,
+        constraint = asset_deposit.depositor == depositor.key() @ TfnError::NotOriginalDepositor,
+    )]
+    pub asset_deposit: Box<Account<'info, TokenDeposit>>,
+
+    #[account(
+        mut,
+        constraint = deposit_vault.key() == asset_deposit.vault @ TfnError::WrongTokenVault,
+        constraint = deposit_vault.owner == asset_deposit.key() @ TfnError::WrongTokenAccountOwner,
+        constraint = deposit_vault.mint == token_mint.key() @ TfnError::WrongTokenMint,
+    )]
+    pub deposit_vault: Box<Account<'info, TokenAccount>>,
+
+    pub token_program: Program<'info, Token>,
+}
+
 /// Only the guardian can claim a deposit — sends SOL to child's wallet.
 /// Enforces time-lock: deposit.lock_until must be in the past.
 #[derive(Accounts)]
@@ -2781,6 +2854,9 @@ pub enum TfnError {
     AssetDepositTooSmall,
     #[msg("Asset aggregate does not belong to this milestone and mint")]
     AssetMilestoneMismatch,
+    // Vault 2.0 errors. Append only.
+    #[msg("The deposit's vault still holds tokens, so it cannot be closed")]
+    AssetVaultNotEmpty,
 }
 
 #[cfg(test)]
@@ -3044,5 +3120,98 @@ mod asset_rail_tests {
         assert_eq!(PLATFORM_FEE_BPS, 200);
         assert_eq!(MIN_TOKEN_DEPOSIT_UNITS, 10_000);
         assert_eq!(u64::from(MAX_ASSET_FEE_BPS), PLATFORM_FEE_BPS);
+    }
+}
+
+#[cfg(test)]
+mod vault_v2_tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    const WEEK: i64 = 7 * 24 * 60 * 60;
+
+    #[test]
+    fn closes_only_a_settled_deposit_with_an_empty_vault() {
+        assert!(validate_asset_deposit_close(TOKEN_DEPOSIT_ACTIVE, 0).is_err());
+        assert!(validate_asset_deposit_close(TOKEN_DEPOSIT_ACTIVE, 11_673).is_err());
+        for settled in [TOKEN_DEPOSIT_CLAIMED, TOKEN_DEPOSIT_REFUNDED, TOKEN_DEPOSIT_EARLY_WITHDRAWN] {
+            assert!(validate_asset_deposit_close(settled, 0).is_ok());
+            assert!(validate_asset_deposit_close(settled, 1).is_err());
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(4_096))]
+
+        // Money is conserved: fee + net is exactly the deposit, and the fee never beats 2%.
+        #[test]
+        fn fee_split_conserves_every_unit(amount in any::<u64>(), fee_bps in 0u16..=MAX_ASSET_FEE_BPS) {
+            if let Ok((fee, net)) = split_token_amount(amount, u64::from(fee_bps)) {
+                prop_assert_eq!(fee + net, amount);
+                prop_assert!(u128::from(fee) * 10_000 <= u128::from(amount) * u128::from(fee_bps));
+            } else {
+                // Only overflow of amount * fee may fail.
+                prop_assert!(u128::from(amount) * u128::from(fee_bps) > u128::from(u64::MAX));
+            }
+        }
+
+        // A 0% rail (USDC and every Vault 2.0 coin) locks the whole deposit.
+        #[test]
+        fn zero_fee_locks_the_whole_amount(amount in 1u64..=u64::MAX, min in 1u64..=1_000_000, now in 0i64..=4_000_000_000) {
+            let result = prepare_asset_deposit(amount, &LockPeriod::FiveYears, "Grandma Rosa", true, min, 0, now);
+            if amount >= min {
+                let (fee, net, lock) = result.unwrap();
+                prop_assert_eq!((fee, net, lock), (0, amount, now + 5 * SECONDS_PER_YEAR));
+            } else {
+                prop_assert!(result.is_err());
+            }
+        }
+
+        // An accepted deposit always locks something and never unlocks in the past.
+        #[test]
+        fn accepted_deposits_lock_value_into_the_future(amount in any::<u64>(), fee_bps in 0u16..=MAX_ASSET_FEE_BPS,
+            now in 0i64..=4_000_000_000, ahead in 1i64..=40 * SECONDS_PER_YEAR) {
+            let future = LockPeriod::UntilTimestamp { lock_until: now + ahead };
+            let today = LockPeriod::UntilTimestamp { lock_until: now };
+            if let Ok((_, net, lock)) = prepare_asset_deposit(amount, &future, "Uncle Jay", true, 1, fee_bps, now) {
+                prop_assert!(net > 0);
+                prop_assert!(lock > now);
+            }
+            let refused = prepare_asset_deposit(amount, &today, "Uncle Jay", true, 1, fee_bps, now).is_err();
+            prop_assert!(refused);
+        }
+
+        // Before the opening date only the guardian's early release works; from it, only the claim.
+        #[test]
+        fn claim_and_early_release_split_exactly_at_the_opening_date(now in 0i64..=4_000_000_000, lock in 1i64..=4_000_000_000, amount in 1u64..=u64::MAX) {
+            let claim = validate_token_claim(now, TOKEN_DEPOSIT_ACTIVE, amount, lock).is_ok();
+            let early = prepare_token_early_withdraw(now, TOKEN_DEPOSIT_ACTIVE, amount, lock).is_ok();
+            prop_assert_eq!(claim, now >= lock);
+            prop_assert_eq!(early, now < lock);
+        }
+
+        // A settled deposit can never be claimed, released early or refunded again.
+        #[test]
+        fn settled_deposits_never_pay_twice(state in 1u8..=3, now in 0i64..=4_000_000_000, lock in 0i64..=4_000_000_000, amount in any::<u64>()) {
+            let who = Pubkey::new_unique();
+            prop_assert!(validate_token_claim(now, state, amount, lock).is_err());
+            prop_assert!(prepare_token_early_withdraw(now, state, amount, lock).is_err());
+            prop_assert!(validate_token_refund(now, state, now, who, who).is_err());
+        }
+
+        // Refunds: the original depositor only, and only for 7 days (inclusive).
+        #[test]
+        fn refunds_are_depositor_only_within_seven_days(created in 0i64..=4_000_000_000, elapsed in 0i64..=30 * 24 * 60 * 60) {
+            let depositor = Pubkey::new_unique();
+            let now = created + elapsed;
+            prop_assert_eq!(validate_token_refund(now, TOKEN_DEPOSIT_ACTIVE, created, depositor, depositor).is_ok(), elapsed <= WEEK);
+            prop_assert!(validate_token_refund(now, TOKEN_DEPOSIT_ACTIVE, created, depositor, Pubkey::new_unique()).is_err());
+        }
+
+        // Asset rails accept at most 9 decimals, a positive minimum and at most 2%.
+        #[test]
+        fn asset_config_bounds(decimals in any::<u8>(), min in any::<u64>(), fee in any::<u16>()) {
+            prop_assert_eq!(validate_asset_config_input(decimals, min, fee).is_ok(), decimals <= 9 && min > 0 && fee <= 200);
+        }
     }
 }
