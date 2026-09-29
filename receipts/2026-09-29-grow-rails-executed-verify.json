@@ -1,0 +1,20 @@
+[
+  {
+    "rail": "solana-staked (JitoSOL)",
+    "configured": true,
+    "mintOk": true,
+    "decimals": 9,
+    "minUnits": "1000000",
+    "feeBps": 0,
+    "enabled": true
+  },
+  {
+    "rail": "dollars-growing (jlUSDC)",
+    "configured": true,
+    "mintOk": true,
+    "decimals": 6,
+    "minUnits": "10000",
+    "feeBps": 0,
+    "enabled": true
+  }
+]

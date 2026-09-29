@@ -1,0 +1,12 @@
+{
+  "mode": "unsigned-squads-import",
+  "cluster": "mainnet-beta",
+  "action": "allowlist JitoSOL and jlUSDC at 0%",
+  "vault": "Eu4B39JRKpFs4uHuXYd79tLeQpKdhbkeW3ErPDDLuYko",
+  "assetConfigs": {
+    "solana-staked (JitoSOL)": "HURpBrxFNLgyh4pkiXjKiAKRvPuC6bDThr7i7Zg4sKWe",
+    "dollars-growing (jlUSDC)": "D18Q82D8gAKcBoXVeFbCiVQiyQc7jMjxxmT7RHmH2yaF"
+  },
+  "sha256": "863f9610ea4973c175f9b03ca2ef4828b0d820034c4ae986df3c6471cfdac7bb",
+  "base58Transaction": "4BuWQvHrdAfYGRs9KMVZYxxPxHKP7f7dZzvnhTb4tSxCXj1h4TmGrHYHKyyCtAMiyUrnNzrw4qqUsUtA5xn5CNdBEs1i9ax4o6LuWbSwTc9y6C6EVNR2E8bvD3oRx3TiweSgbge8ULjyWbDU5GTGoG2vRu8eKcpTpSCvUgbJn1bBWgBh5VYvgpaJLXKkfShPutyDcvxF1yZhZFytTvZSqdubwrspCkWjv3yS3kw9Gt1VsGB5KGwz8GAs7YskUiFiCs61AhKB27fTW8YaHNq3ZDcEUnrCmY3E2ye3E8kvaJ4c7sBEMHeqiAKnHZEDav8NJUeUPTGvpRnke5hEtGfBBc2rQzjcVZULTA6Ssjh9ZnHX2ULQryrkXFitBHnZNC6Ecyieu4Z1izQeCwnDSG19YbFHd6AMS6pTnhhwVXiMM4SNhrYYu9WuzcbUVoA1SL58Z83pG3TLgRMt8qgjh1tBiptVCdjCguhJnWc1yxdRPDA2Fujug6xaGmNTtusCDbfTM2uuep33XfLN1vAYNhrqsxi4R5MAot7L7WmTNkWSm2keoNRNGP"
+}
